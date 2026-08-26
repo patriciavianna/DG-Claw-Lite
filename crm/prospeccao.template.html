@@ -152,6 +152,45 @@ button{cursor:pointer}
 }
 .vazio-msg b{display:block;font-family:var(--display);font-size:16px;color:var(--ink-2);margin-bottom:5px;font-weight:600}
 
+/* ---------- contagem e alarme ---------- */
+.conta{
+  margin-top:18px;display:flex;align-items:baseline;gap:9px;flex-wrap:wrap;
+  margin:0 0 13px;padding:9px 12px;border-radius:var(--r-sm);
+  background:var(--surface);border:1px solid var(--line);
+}
+.conta b{font-family:var(--display);font-weight:600;font-size:14px;letter-spacing:-.01em}
+.conta span{font-size:12.5px;color:var(--muted-c);font-weight:600}
+.conta.quente{background:var(--today-soft);border-color:color-mix(in srgb,var(--today) 32%,transparent)}
+.conta.quente b,.conta.quente span{color:var(--today)}
+
+.alarme{
+  display:flex;align-items:center;gap:11px;margin-top:18px;padding:13px 15px;
+  border-radius:var(--r);background:var(--overdue-soft);
+  border:1px solid color-mix(in srgb,var(--overdue) 34%,transparent);
+}
+.alarme .sino{font-size:20px;line-height:1;flex:none}
+.alarme b{font-family:var(--display);font-weight:800;font-size:16px;color:var(--overdue);display:block;letter-spacing:-.01em}
+.alarme span{font-size:13px;color:var(--overdue);opacity:.85}
+
+/* ---------- cadência ---------- */
+.cad{display:flex;flex-direction:column;gap:2px}
+.cad-item{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line-2);font-size:14px}
+.cad-item:last-child{border-bottom:none}
+.cad-item .n{
+  width:22px;height:22px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;
+  font-size:11.5px;font-weight:700;background:var(--surface-2);border:1px solid var(--line);color:var(--muted-c);
+}
+.cad-item time{font-size:12px;font-weight:700;color:var(--muted-c);font-variant-numeric:tabular-nums;flex:none;width:44px}
+.cad-item p{margin:0;flex:1;line-height:1.4}
+.cad-item.feito .n{background:var(--win);border-color:var(--win);color:#fff}
+.cad-item.feito p,.cad-item.feito time{opacity:.5;text-decoration:line-through}
+.cad-item.agora .n{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.cad-item.agora p{font-weight:700}
+.cad-item .fiz{
+  border:1px solid var(--accent);background:transparent;color:var(--accent);
+  border-radius:99px;padding:5px 12px;font-size:12.5px;font-weight:700;flex:none;
+}
+
 /* ---------- busca ---------- */
 .busca{position:relative;margin-top:18px}
 .busca input{
@@ -310,6 +349,13 @@ var LS="funil-vivo-v1";
 
 function etapa(id){for(var i=0;i<ETAPAS.length;i++){if(ETAPAS[i].id===id)return ETAPAS[i];}return ETAPAS[0];}
 function ativa(p){return ATIVAS.indexOf(p.etapa)>=0;}
+function sincroniza(p){
+  if(!p.cadencia||!p.cadencia.length)return;
+  var prox=null;
+  for(var i=0;i<p.cadencia.length;i++){if(!p.cadencia[i].feito){prox=p.cadencia[i];break;}}
+  if(prox){p.proximaData=prox.data;p.proximaOque=prox.oque;}
+  else if(p.proximaOque===""||/^\d/.test(p.proximaOque)===false){p.proximaData="";p.proximaOque="";}
+}
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7);}
 
 /* ============ datas ============ */
@@ -347,13 +393,15 @@ var estado, pendente=false, somenteLeitura=false, api=null, timer=null, salvando
 
 function normaliza(s){
   if(!s||!Array.isArray(s.pessoas))s={v:1,savedAt:null,pessoas:[]};
+  if(!s.evento||!s.evento.data)s.evento=null;
   s.pessoas=s.pessoas.map(function(p){
     return {
       id:p.id||uid(), nome:p.nome||"Sem nome", empresa:p.empresa||"",
       contato:p.contato||"", origem:p.origem||"", tipo:p.tipo==="mentoria"?"mentoria":"agencia",
       etapa:etapa(p.etapa).id, valor:(p.valor===0||p.valor)?Number(p.valor):null,
       proximaData:p.proximaData||"", proximaOque:p.proximaOque||"",
-      notas:Array.isArray(p.notas)?p.notas:[], criadoEm:p.criadoEm||new Date().toISOString()
+      notas:Array.isArray(p.notas)?p.notas:[], cadencia:Array.isArray(p.cadencia)?p.cadencia:[],
+      criadoEm:p.criadoEm||new Date().toISOString()
     };
   });
   return s;
@@ -369,6 +417,7 @@ function carrega(){
     if(t1>t2){estado=loc;pendente=true;return;}
   }
   estado=emb;pendente=false;
+  estado.pessoas.forEach(sincroniza);
   guardaLocal();
 }
 function guardaLocal(){try{localStorage.setItem(LS,JSON.stringify(estado));}catch(e){}}
