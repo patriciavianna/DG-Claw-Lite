@@ -19,6 +19,7 @@
   --shadow-sheet:0 -8px 40px rgba(25,24,34,.18);
   --r:14px; --r-sm:9px;
   --sp:16px;
+  --v1:#2a78d6; --v2:#eb6834; --v3:#1baf7a; --v4:#eda100;
   --display:"Bricolage Grotesque","Trebuchet MS",system-ui,sans-serif;
   --body:"Manrope","Segoe UI",system-ui,-apple-system,sans-serif;
 }
@@ -35,6 +36,7 @@
     --s-proposta:#F27A9F; --s-ganho:#5FC7AB; --s-perdido:#7B7887;
     --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.36);
     --shadow-sheet:0 -8px 40px rgba(0,0,0,.55);
+  --v1:#3987e5; --v2:#d95926; --v3:#199e70; --v4:#c98500;
   }
 }
 :root[data-theme="dark"]{
@@ -49,6 +51,7 @@
   --s-proposta:#F27A9F; --s-ganho:#5FC7AB; --s-perdido:#7B7887;
   --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.36);
   --shadow-sheet:0 -8px 40px rgba(0,0,0,.55);
+  --v1:#3987e5; --v2:#d95926; --v3:#199e70; --v4:#c98500;
 }
 
 *{box-sizing:border-box}
@@ -191,6 +194,45 @@ button{cursor:pointer}
   border-radius:99px;padding:5px 12px;font-size:12.5px;font-weight:700;flex:none;
 }
 
+/* ---------- painel ---------- */
+.rosca{display:flex;justify-content:center;margin:20px 0 4px}
+.rosca svg{width:190px;height:190px;overflow:visible}
+.rosca .tronco{fill:none;stroke:var(--line-2);stroke-width:26}
+.rosca .fatia{fill:none;stroke-width:26;transition:stroke-width .15s ease}
+.rosca .centro-n{font-family:var(--display);font-weight:800;font-size:34px;fill:var(--ink);letter-spacing:-.03em}
+.rosca .centro-t{font-size:10.5px;fill:var(--muted-c);font-weight:700;letter-spacing:.09em;text-transform:uppercase}
+
+.legenda{display:flex;flex-direction:column;gap:1px;margin-top:6px}
+.leg{display:flex;align-items:center;gap:10px;padding:10px 2px;border-bottom:1px solid var(--line-2)}
+.leg:last-child{border-bottom:none}
+.leg .marca{width:12px;height:12px;border-radius:3px;flex:none}
+.leg .nome{flex:1;font-size:14.5px;font-weight:600}
+.leg .qtd{font-family:var(--display);font-weight:800;font-size:16px;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.leg .pct{font-size:12.5px;color:var(--muted-c);font-weight:700;font-variant-numeric:tabular-nums;width:44px;text-align:right}
+
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(108px,1fr));gap:9px;margin-top:20px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px 13px}
+.kpi b{display:block;font-family:var(--display);font-weight:800;font-size:22px;line-height:1.15;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.kpi span{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted-c);font-weight:700;margin-top:3px}
+.kpi small{display:block;font-size:11.5px;color:var(--muted-c);margin-top:5px;line-height:1.35}
+
+.veredito{margin-top:22px;padding:15px 16px;border-radius:var(--r);border:1px solid var(--line);background:var(--surface)}
+.veredito .selo{
+  display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:800;
+  text-transform:uppercase;letter-spacing:.08em;padding:4px 11px;border-radius:99px;margin-bottom:10px;
+}
+.veredito.bom .selo{background:var(--win-soft);color:var(--win)}
+.veredito.ok .selo{background:var(--today-soft);color:var(--today)}
+.veredito.ruim .selo{background:var(--overdue-soft);color:var(--overdue)}
+.veredito p{margin:0 0 9px;font-size:14.5px;line-height:1.55}
+.veredito p:last-child{margin-bottom:0}
+.veredito .ressalva{font-size:13px;color:var(--muted-c);border-top:1px solid var(--line-2);padding-top:10px;margin-top:11px}
+
+.indic{display:flex;align-items:center;gap:10px;margin-top:9px}
+.indic label{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;white-space:nowrap;text-transform:none;letter-spacing:0;color:var(--ink)}
+.indic input[type=checkbox]{width:20px;height:20px;accent-color:var(--accent);flex:none}
+.indic input[type=text]{flex:1;min-width:0}
+
 /* ---------- busca ---------- */
 .busca{position:relative;margin-top:18px}
 .busca input{
@@ -312,6 +354,7 @@ button{cursor:pointer}
         <button class="tab" role="tab" data-aba="hoje">Hoje <span class="n" id="n-hoje"></span></button>
         <button class="tab" role="tab" data-aba="funil">Funil <span class="n" id="n-funil"></span></button>
         <button class="tab" role="tab" data-aba="pessoas">Pessoas <span class="n" id="n-pessoas"></span></button>
+        <button class="tab" role="tab" data-aba="painel">Painel</button>
       </nav>
     </div>
   </header>
@@ -402,6 +445,7 @@ function normaliza(s){
       etapa:etapa(p.etapa).id, valor:(p.valor===0||p.valor)?Number(p.valor):null,
       proximaData:p.proximaData||"", proximaOque:p.proximaOque||"",
       notas:Array.isArray(p.notas)?p.notas:[], cadencia:Array.isArray(p.cadencia)?p.cadencia:[],
+      indicadoPor:p.indicadoPor||"", deCliente:!!p.deCliente,
       criadoEm:p.criadoEm||new Date().toISOString()
     };
   });
