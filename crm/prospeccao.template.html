@@ -445,7 +445,7 @@ function normaliza(s){
       etapa:etapa(p.etapa).id, valor:(p.valor===0||p.valor)?Number(p.valor):null,
       proximaData:p.proximaData||"", proximaOque:p.proximaOque||"",
       notas:Array.isArray(p.notas)?p.notas:[], cadencia:Array.isArray(p.cadencia)?p.cadencia:[],
-      indicadoPor:p.indicadoPor||"", deCliente:!!p.deCliente,
+      indicadoPor:p.indicadoPor||"", deCliente:!!p.deCliente, proximaTurma:!!p.proximaTurma,
       criadoEm:p.criadoEm||new Date().toISOString()
     };
   });
