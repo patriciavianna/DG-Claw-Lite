@@ -34,3 +34,19 @@ proximo_passo, proxima_data, criado_em, notas
 
 O CSV é o formato de troca com o CRM financeiro: quem chega em `ganho` é
 quem vira lançamento lá.
+
+## Dois arquivos, de propósito
+
+| Arquivo | O que é | Versionado? |
+|---|---|---|
+| `prospeccao.template.html` | o código, com o funil vazio | sim |
+| `prospeccao.html` | o arquivo vivo, com pessoas reais | **não** (`.gitignore`) |
+
+Este repositório é **público**. Nome, telefone e e-mail de quem está sendo
+prospectado nunca entram aqui — vivem só no Artifact publicado, que é
+privado da conta.
+
+Para retomar o arquivo vivo numa sessão nova (o container é efêmero), leia
+o Artifact publicado — ele carrega o HTML com os dados atuais — e grave em
+`crm/prospeccao.html` antes de republicar. Republicar o template por cima
+apaga o funil.
