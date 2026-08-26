@@ -350,7 +350,7 @@ var LS="funil-vivo-v1";
 function etapa(id){for(var i=0;i<ETAPAS.length;i++){if(ETAPAS[i].id===id)return ETAPAS[i];}return ETAPAS[0];}
 function ativa(p){return ATIVAS.indexOf(p.etapa)>=0;}
 function sincroniza(p){
-  if(ATIVAS.indexOf(p.etapa)<0){p.cadencia=[];p.proximaData="";p.proximaOque="";return;}
+  if(p.etapa==="perdido"){p.cadencia=[];p.proximaData="";p.proximaOque="";return;}
   if(!p.cadencia||!p.cadencia.length)return;
   var prox=null;
   for(var i=0;i<p.cadencia.length;i++){if(!p.cadencia[i].feito){prox=p.cadencia[i];break;}}
