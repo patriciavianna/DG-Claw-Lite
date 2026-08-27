@@ -487,4 +487,610 @@ function montaDoc(){
   var dados=JSON.stringify(estado).replace(/</g,"\\u003c");
   return HEAD+'<style id="app-css">'+css+'</style></head><body>'+
     '<template id="app-shell">'+shell+'</template><div id="app"></div>'+
-    '<script type="application/json" id="crm-data">{"v":1,"savedAt":null,"pessoas":[]}</script>
+    '<script type="application/json" id="crm-data">'+dados+'<\/script>'+
+    '<script id="app-js">'+js+'<\/script></body></html>';
+}
+
+function agenda(){
+  clearTimeout(timer);
+  timer=setTimeout(function(){salva(true);},7000);
+}
+function ocupada(){
+  if(document.getElementById("sheet").classList.contains("open"))return true;
+  var a=document.activeElement;
+  return !!(a&&(a.tagName==="INPUT"||a.tagName==="TEXTAREA"||a.tagName==="SELECT"));
+}
+function salva(auto){
+  if(!pendente||salvando||somenteLeitura)return;
+  if(auto&&ocupada()){agenda();return;}
+  if(!api){render();return;}
+  salvando=true;render();
+  try{sessionStorage.setItem("funil-view",JSON.stringify({aba:aba,busca:busca,filtro:filtro}));}catch(e){}
+  api.publish(montaDoc()).then(function(){
+    salvando=false;pendente=false;guardaLocal();render();
+  }).catch(function(err){
+    salvando=false;
+    var c=err&&err.code;
+    if(c==="conflict")return;
+    if(c==="not_writer"||c==="not_granted"||c==="not_declared"||c==="capability_disabled"||c==="consent_required"){
+      somenteLeitura=true;render();return;
+    }
+    if(c==="rate_limited"){setTimeout(function(){salva(true);},20000);render();return;}
+    if(c==="too_large"){aviso="Tem cadastro demais nesta página para salvar de uma vez. Exporte e comece uma nova.";render();return;}
+    aviso="Não consegui salvar agora. Seus dados estão guardados neste aparelho — toque em Salvar de novo daqui a pouco.";
+    render();
+  });
+}
+
+/* ============ view ============ */
+var aba="hoje", busca="", filtro="todos", aviso="";
+try{
+  var vs=JSON.parse(sessionStorage.getItem("funil-view")||"{}");
+  if(vs.aba)aba=vs.aba; if(vs.busca)busca=vs.busca; if(vs.filtro)filtro=vs.filtro;
+}catch(e){}
+
+function esc(s){
+  return String(s==null?"":s).replace(/[&<>"']/g,function(c){
+    return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];
+  });
+}
+
+function barraEvento(){
+  if(!estado.evento||!estado.evento.data)return"";
+  var d=difDias(estado.evento.data);
+  if(d===null||d<0)return"";
+  var txt=d===0?"é hoje":(d===1?"é amanhã":"faltam "+d+" dias");
+  return '<div class="conta'+(d<=2?" quente":"")+'"><b>'+esc(estado.evento.nome)+'</b>'+
+    '<span>'+txt+' · '+esc(dm(estado.evento.data))+'</span></div>';
+}
+function grupos(){
+  var atrasado=[],hoje=[],semana=[],depois=[],sem=[];
+  estado.pessoas.forEach(function(p){
+    var novoCliente=p.etapa==="ganho"&&p.proximaData;
+    if(!ativa(p)&&!novoCliente)return;
+    if(!p.proximaData){sem.push(p);return;}
+    var d=difDias(p.proximaData);
+    if(d<0)atrasado.push(p); else if(d===0)hoje.push(p);
+    else if(d<=7)semana.push(p); else depois.push(p);
+  });
+  var ord=function(a,b){return (a.proximaData||"9999").localeCompare(b.proximaData||"9999");};
+  atrasado.sort(ord);hoje.sort(ord);semana.sort(ord);depois.sort(ord);
+  sem.sort(function(a,b){return b.criadoEm.localeCompare(a.criadoEm);});
+  return {atrasado:atrasado,hoje:hoje,semana:semana,depois:depois,sem:sem};
+}
+
+function cardHTML(p){
+  var e=etapa(p.etapa), d=difDias(p.proximaData), cls="", txt="";
+  if(!p.proximaData){cls="vazio";txt="sem próximo passo";}
+  else{
+    cls = d<0?"atrasado":(d===0?"hoje":"");
+    txt = '<span class="quando">'+esc(quando(p.proximaData))+'</span> · '+esc(p.proximaOque||"retomar");
+  }
+  var sub=[];
+  if(p.empresa)sub.push(esc(p.empresa));
+  if(p.origem)sub.push(esc(p.origem));
+  if(p.proximaTurma)sub.push("próxima turma");
+  if(p.indicadoPor)sub.push("indicada por "+esc(p.indicadoPor)+(p.deCliente?" (cliente)":""));
+  return '<button class="card" data-id="'+p.id+'" style="--stage:var('+e.cor+')">'+
+    '<div class="card-top"><h3>'+esc(p.nome)+'</h3>'+
+      (p.valor?'<span class="valor">'+esc(moeda(p.valor))+'</span>':'')+'</div>'+
+    '<div class="meta">'+
+      '<span class="pill"><span class="bola"></span>'+esc(e.curto)+'</span>'+
+      '<span class="pill tipo">'+(p.tipo==="mentoria"?"Mentoria":"Agência")+'</span>'+
+      (sub.length?'<span>'+sub.join(" · ")+'</span>':'')+
+    '</div>'+
+    '<div class="acao '+cls+'">'+(txt||"")+'</div>'+
+  '</button>';
+}
+
+function grupoHTML(titulo,lista,extra){
+  if(!lista.length)return"";
+  return '<section class="grupo '+(extra||"")+'">'+
+    '<div class="grupo-h"><h2>'+esc(titulo)+'</h2><span class="cnt">'+lista.length+'</span><span class="rule"></span></div>'+
+    '<div class="cards">'+lista.map(cardHTML).join("")+'</div></section>';
+}
+
+function viewHoje(){
+  var g=grupos(), h="";
+  var urg=g.atrasado.length+g.hoje.length;
+  if(urg){
+    h+='<div class="alarme"><span class="sino">🔔</span><div>'+
+       '<b>'+urg+(urg===1?" pessoa esperando":" pessoas esperando")+'</b>'+
+       '<span>'+(g.atrasado.length?g.atrasado.length+" atrasada"+(g.atrasado.length>1?"s":"")+" · ":"")+
+       g.hoje.length+' para hoje</span></div></div>';
+  }
+  h+=grupoHTML("Atrasado",g.atrasado,"urgente");
+  h+=grupoHTML("Hoje",g.hoje,"hoje");
+  h+=grupoHTML("Próximos 7 dias",g.semana);
+  h+=grupoHTML("Sem próximo passo",g.sem);
+  h+=grupoHTML("Mais para frente",g.depois);
+  if(!h){
+    h='<div class="vazio-msg" style="margin-top:26px"><b>Nada te esperando.</b>'+
+      (estado.pessoas.length?"Todo mundo do funil está com o próximo passo agendado.":"Toque no + e cadastre a primeira pessoa que você está prospectando.")+'</div>';
+  }
+  return h;
+}
+
+function viewFunil(){
+  var h="";
+  ETAPAS.forEach(function(e){
+    var lista=estado.pessoas.filter(function(p){return p.etapa===e.id;});
+    if(!lista.length)return;
+    lista.sort(function(a,b){return (a.proximaData||"9999").localeCompare(b.proximaData||"9999");});
+    var total=lista.reduce(function(s,p){return s+(p.valor||0);},0);
+    h+='<section class="grupo">'+
+      '<div class="grupo-h"><h2>'+esc(e.nome)+'</h2><span class="cnt">'+lista.length+
+      (total?" · "+esc(moeda(total)):"")+'</span><span class="rule"></span></div>'+
+      '<div class="cards">'+lista.map(cardHTML).join("")+'</div></section>';
+  });
+  if(!h)h='<div class="vazio-msg" style="margin-top:26px"><b>Funil vazio.</b>Toque no + para começar.</div>';
+  return h;
+}
+
+function viewPessoas(){
+  var q=busca.trim().toLowerCase();
+  var lista=estado.pessoas.filter(function(p){
+    if(filtro==="ativos"&&!ativa(p))return false;
+    if(filtro==="agencia"&&p.tipo!=="agencia")return false;
+    if(filtro==="mentoria"&&p.tipo!=="mentoria")return false;
+    if(filtro==="ganho"&&p.etapa!=="ganho")return false;
+    if(filtro==="proxima"&&!p.proximaTurma)return false;
+    if(!q)return true;
+    return [p.nome,p.empresa,p.contato,p.origem].join(" ").toLowerCase().indexOf(q)>=0;
+  });
+  lista.sort(function(a,b){return a.nome.localeCompare(b.nome,"pt-BR");});
+  var chips=[["todos","Todos"],["ativos","No funil"],["agencia","Agência"],["mentoria","Mentoria"],["ganho","Fechados"],["proxima","Próxima turma"]];
+  return '<div class="busca"><input type="search" id="q" placeholder="Buscar por nome, empresa, origem…" value="'+esc(busca)+'"></div>'+
+    '<div class="filtros">'+chips.map(function(c){
+      return '<button class="chip" data-filtro="'+c[0]+'" aria-pressed="'+(filtro===c[0])+'">'+c[1]+'</button>';
+    }).join("")+'</div>'+
+    (lista.length?'<div class="cards" style="margin-top:16px">'+lista.map(cardHTML).join("")+'</div>'
+      :'<div class="vazio-msg" style="margin-top:22px"><b>Nada encontrado.</b>Tente outro termo ou outro filtro.</div>')+
+    '<div class="rodape">'+
+      '<button data-acao="copiar-hoje">Copiar lista de hoje</button>'+
+      '<button data-acao="exportar">Exportar planilha</button>'+
+    '</div>';
+}
+
+function painelDados(){
+  var t=estado.pessoas.length;
+  var semResp=estado.pessoas.filter(function(p){return p.etapa==="novo"||p.etapa==="contato";}).length;
+  var conversa=estado.pessoas.filter(function(p){return p.etapa==="conversa"||p.etapa==="proposta";}).length;
+  var fechou=estado.pessoas.filter(function(p){return p.etapa==="ganho";}).length;
+  var caiu=estado.pessoas.filter(function(p){return p.etapa==="perdido";}).length;
+  var faturado=estado.pessoas.reduce(function(a,p){return a+(p.etapa==="ganho"?(p.valor||0):0);},0);
+  return {total:t,semResp:semResp,conversa:conversa,fechou:fechou,caiu:caiu,
+          responderam:conversa+fechou+caiu,faturado:faturado};
+}
+
+function rosca(fatias,total){
+  var R=62,C=2*Math.PI*R,gap=4,acc=0,segs="";
+  fatias.forEach(function(f){
+    if(!f.n)return;
+    var comp=(f.n/total)*C, vis=Math.max(comp-gap,1);
+    segs+='<circle class="fatia" cx="80" cy="80" r="'+R+'" stroke="var('+f.cor+')" '+
+      'stroke-dasharray="'+vis.toFixed(2)+' '+(C-vis).toFixed(2)+'" '+
+      'stroke-dashoffset="'+(-acc).toFixed(2)+'" stroke-linecap="butt">'+
+      '<title>'+esc(f.nome)+': '+f.n+' de '+total+'</title></circle>';
+    acc+=comp;
+  });
+  return '<div class="rosca"><svg viewBox="0 0 160 160" role="img" aria-label="Distribuição dos leads">'+
+    '<g transform="rotate(-90 80 80)"><circle class="tronco" cx="80" cy="80" r="'+R+'"></circle>'+segs+'</g>'+
+    '<text class="centro-n" x="80" y="78" text-anchor="middle" dominant-baseline="middle">'+total+'</text>'+
+    '<text class="centro-t" x="80" y="97" text-anchor="middle">leads</text></svg></div>';
+}
+
+function veredito(d){
+  if(!d.total)return"";
+  var tr=d.responderam/d.total*100, tf=d.fechou/d.total*100;
+  var nivel,selo,texto;
+  if(tr<20){nivel="ruim";selo="Precisa de atenção";
+    texto="Menos de um quinto das pessoas respondeu. Quando a resposta é tão baixa, o problema quase nunca é a lista — é a primeira mensagem ou a hora do disparo.";}
+  else if(tr<40){nivel="ok";selo="Dentro do esperado";
+    texto="A taxa de resposta está na faixa comum para abordagem por WhatsApp. Dá para melhorar mexendo na primeira frase, mas não há nada quebrado.";}
+  else {nivel="bom";selo="Está bom";
+    texto="Mais de 4 em cada 10 responderam. Isso é resposta alta para prospecção — a sua abordagem está funcionando.";}
+
+  var t2;
+  if(d.fechou===0) t2="Ainda sem fechamento. Enquanto houver gente em conversa, é cedo para tirar conclusão: fechamento costuma vir depois do terceiro ou quarto contato, não do primeiro.";
+  else if(tf<2) t2="A conversão para venda está abaixo de 2%, que é o piso do que se costuma ver em tráfego pago frio. Vale olhar o preço e a oferta.";
+  else if(tf<5) t2="Conversão de "+tf.toFixed(1)+"% sobre o total — dentro do que se espera de tráfego pago frio, que costuma andar entre 2% e 5%.";
+  else {nivel=(nivel==="ruim")?"ok":"bom";
+    t2="Conversão de "+tf.toFixed(1)+"% sobre o total. Isso está acima da faixa habitual de tráfego pago frio (2% a 5%) — é resultado bom.";}
+
+  var res="";
+  if(d.total<20) res="Ressalva importante: são só "+d.total+" pessoas. Com esse tamanho, uma venda a mais ou a menos muda a porcentagem em vários pontos. Trate como sinal, não como conclusão — a partir de umas 30 pessoas o número começa a valer.";
+  else res="Com "+d.total+" pessoas o número já começa a ter peso, mas continue olhando a tendência entre turmas, não um retrato isolado.";
+
+  var seloTxt={bom:"Está bom",ok:"Dentro do esperado",ruim:"Precisa de atenção"}[nivel];
+  return '<div class="veredito '+nivel+'"><span class="selo">'+seloTxt+'</span>'+
+    '<p>'+texto+'</p><p>'+t2+'</p><p class="ressalva">'+res+'</p></div>';
+}
+
+function viewPainel(){
+  var d=painelDados();
+  if(!d.total)return '<div class="vazio-msg" style="margin-top:26px"><b>Sem dados ainda.</b>Cadastre pessoas e o painel se monta sozinho.</div>';
+  var fatias=[
+    {nome:"Sem resposta",n:d.semResp,cor:"--v1"},
+    {nome:"Em conversa",n:d.conversa,cor:"--v2"},
+    {nome:"Fechou",n:d.fechou,cor:"--v3"},
+    {nome:"Não rolou",n:d.caiu,cor:"--v4"}
+  ];
+  var pct=function(n){return d.total?Math.round(n/d.total*100):0;};
+  var leg=fatias.map(function(f){
+    return '<div class="leg"><span class="marca" style="background:var('+f.cor+')"></span>'+
+      '<span class="nome">'+esc(f.nome)+'</span><span class="qtd">'+f.n+'</span>'+
+      '<span class="pct">'+pct(f.n)+'%</span></div>';
+  }).join("");
+
+  return rosca(fatias,d.total)+'<div class="legenda">'+leg+'</div>'+
+    '<div class="kpis">'+
+      '<div class="kpi"><b>'+pct(d.responderam)+'%</b><span>responderam</span><small>'+d.responderam+' de '+d.total+' pessoas</small></div>'+
+      '<div class="kpi"><b>'+(d.total?(d.fechou/d.total*100).toFixed(1):0)+'%</b><span>viraram venda</span><small>'+d.fechou+' de '+d.total+'</small></div>'+
+      '<div class="kpi"><b>'+esc(moeda(d.faturado)||"R$ 0")+'</b><span>fechado</span><small>soma do que já é venda</small></div>'+
+    '</div>'+veredito(d);
+}
+
+function render(){
+  var ativos=estado.pessoas.filter(ativa);
+  var g=grupos();
+  var precisa=g.atrasado.length+g.hoje.length;
+  var emJogo=ativos.reduce(function(s,p){return s+(p.valor||0);},0);
+
+  var st=document.getElementById("stats");
+  st.innerHTML=
+    '<div class="stat"><b>'+ativos.length+'</b><span>no funil</span></div>'+
+    (emJogo?'<div class="stat"><b>'+esc(moeda(emJogo))+'</b><span>em jogo</span></div>':'')+
+    '<div class="stat'+(precisa?" alerta":"")+'"><b>'+precisa+'</b><span>precisam de você</span></div>';
+
+  document.getElementById("n-hoje").textContent=precisa?"("+precisa+")":"";
+  document.getElementById("n-funil").textContent=ativos.length?"("+ativos.length+")":"";
+  document.getElementById("n-pessoas").textContent=estado.pessoas.length?"("+estado.pessoas.length+")":"";
+  Array.prototype.forEach.call(document.querySelectorAll(".tab"),function(t){
+    t.setAttribute("aria-selected",t.dataset.aba===aba?"true":"false");
+  });
+
+  var es=document.getElementById("estado-salvo");
+  if(somenteLeitura){
+    es.innerHTML='<span class="dot off"></span>só leitura';
+  }else if(salvando){
+    es.innerHTML='<span class="dot pend"></span>salvando…';
+  }else if(pendente){
+    es.innerHTML='<span class="dot pend"></span><button class="btn-save" id="btn-salvar">Salvar</button>';
+  }else{
+    es.innerHTML='<span class="dot"></span>salvo';
+  }
+
+  var v=document.getElementById("view");
+  var avisoHTML="";
+  if(somenteLeitura)avisoHTML='<div class="aviso">Esta janela está em modo leitura — o que você mudar aqui fica só neste aparelho. Abra o link pela sua própria conta para salvar na nuvem.</div>';
+  else if(aviso)avisoHTML='<div class="aviso erro">'+esc(aviso)+'</div>';
+  v.innerHTML=avisoHTML+barraEvento()+(aba==="hoje"?viewHoje():aba==="funil"?viewFunil():aba==="painel"?viewPainel():viewPessoas());
+}
+
+/* ============ toast ============ */
+var toastT=null;
+function toast(msg){
+  var t=document.getElementById("toast");
+  t.textContent=msg;t.classList.add("on");
+  clearTimeout(toastT);toastT=setTimeout(function(){t.classList.remove("on");},2600);
+}
+
+/* ============ sheet ============ */
+function abreSheet(html){
+  document.getElementById("sheet-in").innerHTML=html;
+  document.getElementById("sheet").classList.add("open");
+  document.getElementById("scrim").classList.add("open");
+  document.body.style.overflow="hidden";
+}
+function fechaSheet(){
+  document.getElementById("sheet").classList.remove("open");
+  document.getElementById("scrim").classList.remove("open");
+  document.body.style.overflow="";
+  setTimeout(function(){document.getElementById("sheet-in").innerHTML="";},240);
+  if(pendente)agenda();
+}
+
+function selEtapas(atual){
+  return '<div class="etapas">'+ETAPAS.map(function(e){
+    return '<button class="et" data-etapa="'+e.id+'" aria-pressed="'+(e.id===atual)+'" style="--et:var('+e.cor+')"><span class="bola"></span>'+esc(e.curto)+'</button>';
+  }).join("")+'</div>';
+}
+function optOrigens(v){
+  var achou=ORIGENS.indexOf(v)>=0;
+  return '<option value=""></option>'+ORIGENS.map(function(o){
+    return '<option'+(o===v?" selected":"")+'>'+esc(o)+'</option>';
+  }).join("")+(!achou&&v?'<option selected>'+esc(v)+'</option>':"");
+}
+
+function sheetNovo(){
+  abreSheet(
+    '<div class="sheet-h"><h2 id="sheet-titulo">Nova pessoa</h2><button class="x" data-fecha aria-label="Fechar">×</button></div>'+
+    '<div class="campo"><label for="f-nome">Nome</label><input id="f-nome" autocomplete="off" placeholder="Como você chama essa pessoa"></div>'+
+    '<div class="campo"><label for="f-contato">Contato</label><input id="f-contato" autocomplete="off" placeholder="WhatsApp, @ do Instagram, e-mail…"></div>'+
+    '<div class="dupla">'+
+      '<div class="campo"><label for="f-tipo">Tipo</label><select id="f-tipo"><option value="agencia">Agência</option><option value="mentoria">Mentoria</option></select></div>'+
+      '<div class="campo"><label for="f-origem">Origem</label><select id="f-origem">'+optOrigens("")+'</select></div>'+
+    '</div>'+
+    '<div class="campo"><label>Etapa</label>'+selEtapas("novo")+'</div>'+
+    '<div class="dupla">'+
+      '<div class="campo"><label for="f-oque">Próximo passo</label><input id="f-oque" autocomplete="off" placeholder="Mandar mensagem"></div>'+
+      '<div class="campo"><label for="f-data">Quando</label><input id="f-data" type="date" value="'+hojeISO()+'"></div>'+
+    '</div>'+
+    '<p class="dica">Só o nome é obrigatório. O resto você completa depois, tocando na pessoa.</p>'+
+    '<div class="linha-btns"><button class="btn pri" data-acao="criar">Adicionar ao funil</button></div>'
+  );
+  var et="novo";
+  var inn=document.getElementById("sheet-in");
+  inn.addEventListener("click",function(ev){
+    var b=ev.target.closest("[data-etapa]");
+    if(b){
+      et=b.dataset.etapa;
+      Array.prototype.forEach.call(inn.querySelectorAll("[data-etapa]"),function(x){
+        x.setAttribute("aria-pressed",x.dataset.etapa===et?"true":"false");
+      });
+    }
+  });
+  inn.querySelector('[data-acao="criar"]').addEventListener("click",function(){
+    var nome=inn.querySelector("#f-nome").value.trim();
+    if(!nome){inn.querySelector("#f-nome").focus();toast("Escreve pelo menos o nome.");return;}
+    estado.pessoas.push({
+      id:uid(),nome:nome,empresa:"",
+      contato:inn.querySelector("#f-contato").value.trim(),
+      origem:inn.querySelector("#f-origem").value,
+      tipo:inn.querySelector("#f-tipo").value,
+      etapa:et,valor:null,
+      proximaOque:inn.querySelector("#f-oque").value.trim(),
+      proximaData:inn.querySelector("#f-data").value,
+      notas:[],criadoEm:new Date().toISOString()
+    });
+    fechaSheet();mudou();toast(nome+" entrou no funil.");
+  });
+  setTimeout(function(){inn.querySelector("#f-nome").focus();},260);
+}
+
+function sheetPessoa(id){
+  var p=null;
+  for(var i=0;i<estado.pessoas.length;i++){if(estado.pessoas[i].id===id)p=estado.pessoas[i];}
+  if(!p)return;
+  var notas=p.notas.slice().reverse().map(function(n){
+    return '<div class="nota"><time>'+esc(dm((n.data||"").slice(0,10)))+'</time><p>'+esc(n.texto)+'</p></div>';
+  }).join("");
+
+  var proxN=-1;
+  for(var j=0;j<(p.cadencia||[]).length;j++){if(!p.cadencia[j].feito){proxN=j;break;}}
+  var cad="";
+  if(p.cadencia&&p.cadencia.length){
+    cad='<div class="hist"><h3>Cadência de retomada</h3><div class="cad">'+
+      p.cadencia.map(function(c,i){
+        var cls=c.feito?"feito":(i===proxN?"agora":"");
+        return '<div class="cad-item '+cls+'"><span class="n">'+(i+1)+'</span>'+
+          '<time>'+esc(dm(c.data))+'</time><p>'+esc(c.oque)+'</p>'+
+          (i===proxN?'<button class="fiz" data-fiz="'+i+'">Fiz</button>':'')+'</div>';
+      }).join("")+'</div></div>';
+  }
+
+  abreSheet(
+    '<div class="sheet-h"><h2 id="sheet-titulo">'+esc(p.nome)+'</h2><button class="x" data-fecha aria-label="Fechar">×</button></div>'+
+    '<div class="campo"><label>Etapa</label>'+selEtapas(p.etapa)+'</div>'+
+    '<div class="campo"><label for="e-oque">Próximo passo</label><input id="e-oque" value="'+esc(p.proximaOque)+'" placeholder="O que você precisa fazer"></div>'+
+    '<div class="campo"><label for="e-data">Quando</label><input id="e-data" type="date" value="'+esc(p.proximaData)+'">'+
+      '<div class="acoes-rapidas">'+
+        '<button class="qb" data-adia="0">hoje</button>'+
+        '<button class="qb" data-adia="1">amanhã</button>'+
+        '<button class="qb" data-adia="3">+3 dias</button>'+
+        '<button class="qb" data-adia="7">+1 semana</button>'+
+        '<button class="qb" data-adia="15">+15 dias</button>'+
+      '</div></div>'+
+    '<div class="campo"><label for="e-nota">Anotar o que rolou</label><textarea id="e-nota" placeholder="Falei por áudio, ela pediu proposta até sexta…"></textarea>'+
+      '<div class="acoes-rapidas"><button class="qb" data-acao="anotar">Salvar anotação</button></div></div>'+
+    '<div class="dupla">'+
+      '<div class="campo"><label for="e-nome">Nome</label><input id="e-nome" value="'+esc(p.nome)+'"></div>'+
+      '<div class="campo"><label for="e-empresa">Empresa</label><input id="e-empresa" value="'+esc(p.empresa)+'"></div>'+
+    '</div>'+
+    '<div class="dupla">'+
+      '<div class="campo"><label for="e-contato">Contato</label><input id="e-contato" value="'+esc(p.contato)+'"></div>'+
+      '<div class="campo"><label for="e-valor">Valor (R$)</label><input id="e-valor" type="number" inputmode="numeric" value="'+(p.valor||"")+'" placeholder="0"></div>'+
+    '</div>'+
+    '<div class="campo"><label>Guardar para depois</label>'+
+      '<div class="indic"><label><input type="checkbox" id="e-proxima"'+(p.proximaTurma?" checked":"")+'> voltar na próxima turma</label></div>'+
+      '<p class="dica">Marque quem disse não agora mas pode dizer sim depois. Não gera cobrança nem alarme — só entra no filtro Próxima turma.</p></div>'+
+    '<div class="campo"><label>Indicação</label>'+
+      '<div class="indic"><label><input type="checkbox" id="e-cliente"'+(p.deCliente?" checked":"")+'> quem indicou é meu cliente</label></div>'+
+      '<input type="text" id="e-indic" value="'+esc(p.indicadoPor)+'" placeholder="nome de quem indicou" style="margin-top:9px">'+
+      '<p class="dica">Isto diz respeito a quem indicou, não a esta pessoa. Quem já é cliente seu fica na etapa Fechado.</p></div>'+
+    '<div class="dupla">'+
+      '<div class="campo"><label for="e-tipo">Tipo</label><select id="e-tipo"><option value="agencia"'+(p.tipo==="agencia"?" selected":"")+'>Agência</option><option value="mentoria"'+(p.tipo==="mentoria"?" selected":"")+'>Mentoria</option></select></div>'+
+      '<div class="campo"><label for="e-origem">Origem</label><select id="e-origem">'+optOrigens(p.origem)+'</select></div>'+
+    '</div>'+
+    '<div class="linha-btns">'+
+      '<button class="btn pri" data-acao="salvar-pessoa">Salvar</button>'+
+      '<button class="btn perigo" data-acao="apagar">Apagar</button>'+
+    '</div>'+
+    cad+
+    (notas?'<div class="hist"><h3>Histórico</h3>'+notas+'</div>':'')
+  );
+
+  var inn=document.getElementById("sheet-in");
+  var novaEtapa=p.etapa;
+
+  inn.addEventListener("click",function(ev){
+    var b=ev.target.closest("[data-etapa]");
+    if(b){
+      novaEtapa=b.dataset.etapa;
+      Array.prototype.forEach.call(inn.querySelectorAll("[data-etapa]"),function(x){
+        x.setAttribute("aria-pressed",x.dataset.etapa===novaEtapa?"true":"false");
+      });
+      return;
+    }
+    var a=ev.target.closest("[data-adia]");
+    if(a){inn.querySelector("#e-data").value=maisDias(Number(a.dataset.adia));return;}
+    var fz=ev.target.closest("[data-fiz]");
+    if(fz){
+      var k=Number(fz.dataset.fiz), passo=p.cadencia[k];
+      passo.feito=true; passo.feitoEm=new Date().toISOString();
+      p.notas.push({data:new Date().toISOString(),texto:"Tentativa "+(k+1)+" feita: "+passo.oque});
+      sincroniza(p);
+      fechaSheet();mudou();
+      toast(p.proximaData?"Feito. Próxima em "+dm(p.proximaData)+".":"Cadência encerrada.");
+      return;
+    }
+    var n=ev.target.closest('[data-acao="anotar"]');
+    if(n){
+      var t=inn.querySelector("#e-nota").value.trim();
+      if(!t){toast("Escreve a anotação primeiro.");return;}
+      p.notas.push({data:new Date().toISOString(),texto:t});
+      inn.querySelector("#e-nota").value="";
+      mudou();toast("Anotado.");
+      return;
+    }
+    if(ev.target.closest('[data-acao="salvar-pessoa"]')){
+      var nome=inn.querySelector("#e-nome").value.trim();
+      if(!nome){toast("O nome não pode ficar vazio.");return;}
+      var vl=inn.querySelector("#e-valor").value;
+      var nota=inn.querySelector("#e-nota").value.trim();
+      if(nota)p.notas.push({data:new Date().toISOString(),texto:nota});
+      if(novaEtapa!==p.etapa)p.notas.push({data:new Date().toISOString(),texto:"Etapa: "+etapa(p.etapa).nome+" → "+etapa(novaEtapa).nome});
+      p.nome=nome;
+      p.empresa=inn.querySelector("#e-empresa").value.trim();
+      p.contato=inn.querySelector("#e-contato").value.trim();
+      p.origem=inn.querySelector("#e-origem").value;
+      p.indicadoPor=inn.querySelector("#e-indic").value.trim();
+      p.deCliente=inn.querySelector("#e-cliente").checked;
+      p.proximaTurma=inn.querySelector("#e-proxima").checked;
+      p.tipo=inn.querySelector("#e-tipo").value;
+      p.valor=vl===""?null:Number(vl);
+      p.etapa=novaEtapa;
+      p.proximaOque=inn.querySelector("#e-oque").value.trim();
+      p.proximaData=inn.querySelector("#e-data").value;
+      sincroniza(p);
+      fechaSheet();mudou();
+      toast(p.etapa==="perdido"?"Saiu do funil — retomadas canceladas.":"Salvo.");
+      return;
+    }
+    if(ev.target.closest('[data-acao="apagar"]')){
+      if(!confirm("Apagar "+p.nome+" de vez?"))return;
+      estado.pessoas=estado.pessoas.filter(function(x){return x.id!==p.id;});
+      fechaSheet();mudou();toast("Apagado.");
+    }
+  });
+}
+
+/* ============ copiar / exportar ============ */
+function textoHoje(){
+  var g=grupos(),l=[];
+  function bloco(t,arr){
+    if(!arr.length)return;
+    l.push(t.toUpperCase());
+    arr.forEach(function(p){
+      l.push("• "+p.nome+(p.contato?" ("+p.contato+")":"")+" — "+(p.proximaOque||"retomar")+
+        (p.proximaData?" ["+quando(p.proximaData)+"]":""));
+    });
+    l.push("");
+  }
+  bloco("Atrasado",g.atrasado);bloco("Hoje",g.hoje);bloco("Sem próximo passo",g.sem);
+  return l.length?("Funil — "+dm(hojeISO())+"\n\n"+l.join("\n")).trim():"Nada pendente hoje.";
+}
+function csv(){
+  var cab=["nome","empresa","contato","tipo","origem","etapa","valor","proximo_passo","proxima_data","criado_em","notas"];
+  var esc2=function(v){return '"'+String(v==null?"":v).replace(/"/g,'""')+'"';};
+  var linhas=[cab.join(",")];
+  estado.pessoas.forEach(function(p){
+    linhas.push([p.nome,p.empresa,p.contato,p.tipo,p.origem,etapa(p.etapa).nome,
+      p.valor==null?"":p.valor,p.proximaOque,p.proximaData,p.criadoEm.slice(0,10),
+      p.notas.map(function(n){return (n.data||"").slice(0,10)+": "+n.texto;}).join(" | ")
+    ].map(esc2).join(","));
+  });
+  return "﻿"+linhas.join("\r\n");
+}
+function copiar(txt){
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(txt).then(function(){toast("Copiado — cola no WhatsApp.");},function(){caixa(txt);});
+  }else caixa(txt);
+}
+function caixa(txt){
+  abreSheet('<div class="sheet-h"><h2 id="sheet-titulo">Copie daqui</h2><button class="x" data-fecha aria-label="Fechar">×</button></div>'+
+    '<p class="dica">O navegador não deixou copiar sozinho. Segure o texto, selecione tudo e copie.</p>'+
+    '<textarea class="copiabox" readonly>'+esc(txt)+'</textarea>');
+  setTimeout(function(){var t=document.querySelector(".copiabox");if(t){t.focus();t.select();}},250);
+}
+function exportar(){
+  var dados=csv();
+  if(!api2){caixa(dados);return;}
+  api2.save({filename:"funil-"+hojeISO()+".csv",data:dados}).then(function(){
+    toast("Planilha salva.");
+  }).catch(function(err){
+    var c=err&&err.code;
+    if(c==="declined")return;
+    if(c==="extension_not_enabled"||c==="rejected_extension"){
+      api2.save({filename:"funil-"+hojeISO()+".txt",data:dados}).then(function(){
+        toast("Salvo como .txt — é só renomear para .csv.");
+      }).catch(function(){caixa(dados);});
+      return;
+    }
+    caixa(dados);
+  });
+}
+
+/* ============ ligação ============ */
+var api2=null;
+function liga(){
+  document.getElementById("app").appendChild(
+    document.getElementById("app-shell").content.cloneNode(true));
+
+  document.getElementById("fab").addEventListener("click",sheetNovo);
+  document.getElementById("scrim").addEventListener("click",fechaSheet);
+  document.addEventListener("keydown",function(e){
+    if(e.key==="Escape"&&document.getElementById("sheet").classList.contains("open"))fechaSheet();
+  });
+  document.getElementById("sheet").addEventListener("click",function(e){
+    if(e.target.closest("[data-fecha]"))fechaSheet();
+  });
+  document.getElementById("tabs").addEventListener("click",function(e){
+    var t=e.target.closest(".tab");
+    if(t){aba=t.dataset.aba;render();window.scrollTo({top:0,behavior:"smooth"});}
+  });
+  document.querySelector(".top").addEventListener("click",function(e){
+    if(e.target.closest("#btn-salvar")){clearTimeout(timer);salva(false);}
+  });
+  document.getElementById("view").addEventListener("click",function(e){
+    var c=e.target.closest(".card");
+    if(c){sheetPessoa(c.dataset.id);return;}
+    var f=e.target.closest("[data-filtro]");
+    if(f){filtro=f.dataset.filtro;render();return;}
+    var a=e.target.closest("[data-acao]");
+    if(!a)return;
+    if(a.dataset.acao==="copiar-hoje")copiar(textoHoje());
+    if(a.dataset.acao==="exportar")exportar();
+  });
+  document.getElementById("view").addEventListener("input",function(e){
+    if(e.target.id==="q"){
+      busca=e.target.value;
+      var pos=e.target.selectionStart;
+      render();
+      var q=document.getElementById("q");
+      if(q){q.focus();try{q.setSelectionRange(pos,pos);}catch(err){}}
+    }
+  });
+  window.addEventListener("beforeunload",guardaLocal);
+
+  render();
+
+  if(window.claude&&window.claude.use){
+    window.claude.use("artifact").then(function(a){
+      api=a;
+      if(!a){somenteLeitura=true;}
+      render();
+      if(pendente&&api)agenda();
+    }).catch(function(){somenteLeitura=true;render();});
+    window.claude.use("downloads").then(function(d){api2=d;});
+  }else{
+    somenteLeitura=true;render();
+  }
+}
+
+carrega();
+if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",liga);
+else liga();
+})();
+</script>
