@@ -393,7 +393,7 @@ var LS="funil-vivo-v1";
 function etapa(id){for(var i=0;i<ETAPAS.length;i++){if(ETAPAS[i].id===id)return ETAPAS[i];}return ETAPAS[0];}
 function ativa(p){return ATIVAS.indexOf(p.etapa)>=0;}
 function sincroniza(p){
-  if(p.etapa==="perdido"){p.cadencia=[];p.proximaData="";p.proximaOque="";return;}
+  if(p.etapa==="perdido"){p.cadencia=[];return;}
   if(!p.cadencia||!p.cadencia.length)return;
   var prox=null;
   for(var i=0;i<p.cadencia.length;i++){if(!p.cadencia[i].feito){prox=p.cadencia[i];break;}}
@@ -546,9 +546,7 @@ function barraEvento(){
 function grupos(){
   var atrasado=[],hoje=[],semana=[],depois=[],sem=[];
   estado.pessoas.forEach(function(p){
-    var novoCliente=p.etapa==="ganho"&&p.proximaData;
-    if(!ativa(p)&&!novoCliente)return;
-    if(!p.proximaData){sem.push(p);return;}
+    if(!p.proximaData){ if(ativa(p))sem.push(p); return; }
     var d=difDias(p.proximaData);
     if(d<0)atrasado.push(p); else if(d===0)hoje.push(p);
     else if(d<=7)semana.push(p); else depois.push(p);
@@ -950,6 +948,7 @@ function sheetPessoa(id){
       var vl=inn.querySelector("#e-valor").value;
       var nota=inn.querySelector("#e-nota").value.trim();
       if(nota)p.notas.push({data:new Date().toISOString(),texto:nota});
+      var virouPerdido=(novaEtapa==="perdido"&&p.etapa!=="perdido");
       if(novaEtapa!==p.etapa)p.notas.push({data:new Date().toISOString(),texto:"Etapa: "+etapa(p.etapa).nome+" → "+etapa(novaEtapa).nome});
       p.nome=nome;
       p.empresa=inn.querySelector("#e-empresa").value.trim();
@@ -963,9 +962,10 @@ function sheetPessoa(id){
       p.etapa=novaEtapa;
       p.proximaOque=inn.querySelector("#e-oque").value.trim();
       p.proximaData=inn.querySelector("#e-data").value;
+      if(virouPerdido){p.cadencia=[];p.proximaData="";p.proximaOque="";}
       sincroniza(p);
       fechaSheet();mudou();
-      toast(p.etapa==="perdido"?"Saiu do funil — retomadas canceladas.":"Salvo.");
+      toast(virouPerdido?"Saiu do funil — retomadas canceladas. Pode marcar uma data à mão se quiser voltar nela.":"Salvo.");
       return;
     }
     if(ev.target.closest('[data-acao="apagar"]')){
