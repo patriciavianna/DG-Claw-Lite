@@ -401,6 +401,26 @@ function sincroniza(p){
   else if(p.proximaOque===""||/^\d/.test(p.proximaOque)===false){p.proximaData="";p.proximaOque="";}
 }
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7);}
+function soDigitos(t){var x=String(t||"").replace(/\D/g,"");return x.replace(/^0+/,"").replace(/^55(?=\d{10,11}$)/,"");}
+function jaCadastrado(tel,ignoraId){
+  var n=soDigitos(tel); if(n.length<8)return null;
+  for(var i=0;i<estado.pessoas.length;i++){
+    var p=estado.pessoas[i]; if(p.id===ignoraId)continue;
+    var m=soDigitos(p.contato); if(m.length<8)continue;
+    if(m===n)return {p:p,certeza:true};
+    if(m.slice(-8)===n.slice(-8))return {p:p,certeza:false};
+  }
+  return null;
+}
+function nomeParecido(nome,ignoraId){
+  var n=String(nome||"").trim().toLowerCase();
+  if(n.length<3)return null;
+  for(var i=0;i<estado.pessoas.length;i++){
+    var p=estado.pessoas[i]; if(p.id===ignoraId)continue;
+    if(String(p.nome).trim().toLowerCase()===n)return p;
+  }
+  return null;
+}
 
 /* ============ datas ============ */
 function hojeISO(){
@@ -832,9 +852,15 @@ function sheetNovo(){
   inn.querySelector('[data-acao="criar"]').addEventListener("click",function(){
     var nome=inn.querySelector("#f-nome").value.trim();
     if(!nome){inn.querySelector("#f-nome").focus();toast("Escreve pelo menos o nome.");return;}
+    var tel=inn.querySelector("#f-contato").value.trim();
+    var dup=jaCadastrado(tel,null);
+    if(dup&&dup.certeza){toast("Esse telefone já é de "+dup.p.nome+". Lead já cadastrado.");return;}
+    if(dup&&!dup.certeza&&!confirm("Esse número parece o mesmo de "+dup.p.nome+", só que com DDD diferente. Cadastrar assim mesmo?"))return;
+    var ig=nomeParecido(nome,null);
+    if(ig&&!confirm("Já existe alguém chamado "+nome+" na base. Cadastrar outra pessoa com o mesmo nome?"))return;
     estado.pessoas.push({
       id:uid(),nome:nome,empresa:"",
-      contato:inn.querySelector("#f-contato").value.trim(),
+      contato:tel,
       origem:inn.querySelector("#f-origem").value,
       tipo:inn.querySelector("#f-tipo").value,
       etapa:et,valor:null,
@@ -945,6 +971,9 @@ function sheetPessoa(id){
     if(ev.target.closest('[data-acao="salvar-pessoa"]')){
       var nome=inn.querySelector("#e-nome").value.trim();
       if(!nome){toast("O nome não pode ficar vazio.");return;}
+      var telNovo=inn.querySelector("#e-contato").value.trim();
+      var dup2=jaCadastrado(telNovo,p.id);
+      if(dup2&&dup2.certeza){toast("Esse telefone já é de "+dup2.p.nome+". Não dá para repetir.");return;}
       var vl=inn.querySelector("#e-valor").value;
       var nota=inn.querySelector("#e-nota").value.trim();
       if(nota)p.notas.push({data:new Date().toISOString(),texto:nota});
@@ -952,7 +981,7 @@ function sheetPessoa(id){
       if(novaEtapa!==p.etapa)p.notas.push({data:new Date().toISOString(),texto:"Etapa: "+etapa(p.etapa).nome+" → "+etapa(novaEtapa).nome});
       p.nome=nome;
       p.empresa=inn.querySelector("#e-empresa").value.trim();
-      p.contato=inn.querySelector("#e-contato").value.trim();
+      p.contato=telNovo;
       p.origem=inn.querySelector("#e-origem").value;
       p.indicadoPor=inn.querySelector("#e-indic").value.trim();
       p.deCliente=inn.querySelector("#e-cliente").checked;
