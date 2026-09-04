@@ -388,13 +388,17 @@ var ETAPAS=[
 var ATIVAS=["novo","contato","conversa","proposta"];
 var TIPOS=[{id:"agencia",nome:"Agência"},{id:"mentoria",nome:"Mentoria"}];
 var ORIGENS=["Instagram","Tráfego pago","Indicação","Evento","WhatsApp","LinkedIn","Site","Lista fria","Outro"];
-var CLASSIFICACOES=["Networking","Grupo de WhatsApp de venda","Não classificado"];
+var CLASSIFICACOES=["Networking","Grupo de WhatsApp de venda","Anúncio","Base de ex-alunos","Indicação","Evento presencial","Não classificado"];
 var LS="funil-vivo-v1";
 function classificaPor(origem){
   var o=String(origem||"").toLowerCase();
   if(o.indexOf("empres")>=0&&o.indexOf("sa")>=0)return "Networking";
   if(o.indexOf("networking")>=0)return "Networking";
   if(o.indexOf("grupo")>=0&&o.indexOf("whatsapp")>=0)return "Grupo de WhatsApp de venda";
+  if(o.indexOf("tráfego")>=0||o.indexOf("trafego")>=0||o.indexOf("anúncio")>=0||o.indexOf("anuncio")>=0)return "Anúncio";
+  if(o.indexOf("ex-aluno")>=0||o.indexOf("ex aluno")>=0)return "Base de ex-alunos";
+  if(o.indexOf("indica")>=0)return "Indicação";
+  if(o.indexOf("evento")>=0)return "Evento presencial";
   return "Não classificado";
 }
 
