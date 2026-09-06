@@ -92,10 +92,11 @@ button{cursor:pointer}
 .stat span{font-size:11.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted-c);font-weight:600}
 .stat.alerta b{color:var(--overdue)}
 
-.tabs{display:flex;gap:4px}
+.tabs{display:flex;gap:2px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
 .tab{
-  flex:1;background:none;border:none;padding:11px 4px 12px;border-bottom:2.5px solid transparent;
-  font-size:14.5px;font-weight:600;color:var(--muted-c);border-radius:6px 6px 0 0;
+  flex:1 0 auto;min-width:0;background:none;border:none;padding:11px 9px 12px;border-bottom:2.5px solid transparent;
+  font-size:14px;white-space:nowrap;font-weight:600;color:var(--muted-c);border-radius:6px 6px 0 0;
 }
 .tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
 .tab .n{font-size:12px;color:var(--muted-c);font-variant-numeric:tabular-nums}
@@ -241,6 +242,30 @@ button{cursor:pointer}
 .tab-mes th{font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);background:var(--surface-2)}
 .tab-mes tr.total td{font-weight:800;background:var(--surface-2)}
 
+/* ---------- oferta ---------- */
+.oferta{display:flex;flex-direction:column;gap:24px;margin-top:20px}
+.precoBox{border:1px solid var(--line);border-radius:var(--r);overflow:hidden;background:var(--surface)}
+.precoBox .linha{display:flex;align-items:baseline;justify-content:space-between;gap:14px;padding:14px 16px}
+.precoBox .linha + .linha{border-top:1px solid var(--line-2)}
+.precoBox .linha.forte{background:var(--accent-soft)}
+.precoBox .rot{font-size:11px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--muted-c)}
+.precoBox .linha.forte .rot{color:var(--accent)}
+.precoBox .val{font-family:var(--display);font-weight:800;font-size:19px;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.precoBox .linha.forte .val{font-size:30px;color:var(--accent);line-height:1}
+.precoBox .obs{font-size:12.5px;color:var(--muted-c);padding:0 16px 13px;margin:0}
+.entregas{display:flex;flex-direction:column;border-top:1px solid var(--line)}
+.entrega{display:grid;grid-template-columns:26px 1fr;gap:12px;padding:13px 2px;border-bottom:1px solid var(--line-2)}
+.entrega .num{font-family:var(--display);font-weight:800;font-size:13px;color:var(--accent);font-variant-numeric:tabular-nums;padding-top:2px}
+.entrega b{display:block;font-size:15px;font-weight:600;margin-bottom:2px}
+.entrega span{font-size:13.5px;color:var(--muted-c);line-height:1.5}
+.regraBox{border-left:3px solid var(--accent);background:var(--accent-soft);padding:13px 16px;border-radius:0 var(--r-sm) var(--r-sm) 0;font-size:14.5px;line-height:1.55}
+.pilulas{display:flex;flex-wrap:wrap;gap:6px}
+.pilula{font-size:12.5px;padding:6px 11px;border-radius:99px;background:var(--surface);border:1px solid var(--line);color:var(--ink-2)}
+.inclui{display:flex;flex-direction:column;gap:7px;font-size:14px;color:var(--ink-2)}
+.inclui div{display:grid;grid-template-columns:15px 1fr;gap:9px;line-height:1.45}
+.inclui .s{font-weight:800;color:var(--win)}
+.inclui .n{font-weight:800;color:var(--overdue)}
+
 /* ---------- busca ---------- */
 .busca{position:relative;margin-top:18px}
 .busca input{
@@ -363,6 +388,7 @@ button{cursor:pointer}
         <button class="tab" role="tab" data-aba="funil">Funil <span class="n" id="n-funil"></span></button>
         <button class="tab" role="tab" data-aba="pessoas">Pessoas <span class="n" id="n-pessoas"></span></button>
         <button class="tab" role="tab" data-aba="painel">Painel</button>
+        <button class="tab" role="tab" data-aba="proposta">Oferta</button>
       </nav>
     </div>
   </header>
@@ -854,6 +880,52 @@ function viewPainel(){
     '</div>'+blocoCiclo()+blocoMes()+listaVendas()+porClassificacao()+veredito(d);
 }
 
+function viewProposta(){
+  var ENTREGAS=[
+   ["Diagnóstico e reestruturação do perfil","Bio, nome, foto, links, contatos, destaques, feed, comunicação visual, apresentação dos produtos, informações comerciais e jornada de compra."],
+   ["Posicionamento e estrutura de comunicação","Pilares de conteúdo personalizados por negócio. Na proposta original: produtos, novidades, presentes, fé e significado, bastidores, atendimento, clientes, datas especiais, vendas e história da loja."],
+   ["Organização dos Destaques","Base: Sobre nós, Produtos, Novidades, Presentes, Entregas, Clientes, Loja física e Contato. Personalizável."],
+   ["30 ideias de conteúdo","Para apresentar produtos, estimular vendas, criar relacionamento, mostrar bastidores, divulgar novidades e aproveitar datas."],
+   ["Calendário de conteúdo","Simplificado, com uma frequência que o cliente consiga manter na rotina dele."],
+   ["Modelos editáveis","Produtos, novidades, promoções, depoimentos, comunicados e Stories."],
+   ["Nove conteúdos estratégicos iniciais","Estáticos, carrosséis, produto, institucional, sugestões de Reels, relacionamento e vendas. Com legendas e direcionamento."],
+   ["Orientação final","Encontro online de até 1h30 apresentando toda a estrutura e como manter."]
+  ];
+  var VARS=["Quantidade de peças","Criação de artes","Reels","Calendário","Profundidade da estratégia","Identidade visual","Acompanhamento"];
+  var h='<div class="oferta">';
+  h+='<div class="precoBox">'+
+     '<div class="linha forte"><span class="rot">Preço-base no Pix</span><span class="val">R$ 1.497</span></div>'+
+     '<div class="linha"><span class="rot">No cartão</span><span class="val">5× de R$ 328,25</span></div>'+
+     '<div class="linha"><span class="rot">Total no cartão</span><span class="val">R$ 1.641,25</span></div>'+
+     '<p class="obs">Cartão por link de pagamento. Validade da proposta: 3 dias corridos.</p></div>';
+  h+='<div><div class="grupo-h"><h2>O que é</h2><span class="rule"></span></div>'+
+     '<p class="dica" style="font-size:14.5px;line-height:1.6;margin:0">Reestruturação Estratégica do Instagram. Projeto pontual, com começo, meio e fim, implantado em até 30 dias. Não inclui gestão mensal — o que vier depois da entrega é escopo novo, com preço próprio.</p></div>';
+  h+='<div><div class="grupo-h"><h2>As oito entregas</h2><span class="rule"></span></div><div class="entregas">'+
+     ENTREGAS.map(function(e,i){return '<div class="entrega"><span class="num">'+(i<9?"0":"")+(i+1)+'</span><div><b>'+esc(e[0])+'</b><span>'+esc(e[1])+'</span></div></div>';}).join("")+'</div></div>';
+  h+='<div><div class="grupo-h"><h2>Não está incluído</h2><span class="rule"></span></div><div class="inclui">'+
+     ["Gestão mensal das redes sociais","Produção contínua de conteúdo","Acompanhamento após a entrega"].map(function(t){
+       return '<div><span class="n">−</span>'+esc(t)+'</div>';}).join("")+'</div></div>';
+  h+='<div><div class="grupo-h"><h2>Como calcular as próximas</h2><span class="rule"></span></div>'+
+     '<div class="regraBox"><b>R$ 1.497 no Pix</b> é a base para estratégia + reestruturação + planejamento + criação inicial + orientação. As próximas se calculam proporcionalmente a partir daqui.</div>'+
+     '<div class="pilulas" style="margin-top:12px">'+VARS.map(function(v){return '<span class="pilula">'+esc(v)+'</span>';}).join("")+'</div></div>';
+
+  var props=estado.pessoas.filter(function(p){return p.propostaEm;});
+  props.sort(function(a,b){return a.propostaEm.localeCompare(b.propostaEm);});
+  if(props.length){
+    var E={ganho:"Fechou",perdido:"Não fechou",proposta:"Em aberto",conversa:"Em conversa",contato:"Em contato",novo:"Novo"};
+    h+='<div><div class="grupo-h"><h2>Registro das propostas</h2><span class="cnt">'+props.length+'</span><span class="rule"></span></div>'+
+      '<div class="tab-mes"><table><thead><tr><th>Enviada</th><th style="text-align:left">Quem</th><th>Valor</th><th style="text-align:left">Desfecho</th></tr></thead><tbody>'+
+      props.map(function(p){
+        var cor=p.etapa==="ganho"?"var(--win)":(p.etapa==="perdido"?"var(--overdue)":"var(--today)");
+        return '<tr><td>'+esc(dm(p.propostaEm))+'</td><td style="text-align:left">'+esc(p.nome)+'</td>'+
+          '<td>'+esc(moeda(p.valor)||"—")+'</td>'+
+          '<td style="text-align:left;color:'+cor+';font-weight:700">'+esc(E[p.etapa]||p.etapa)+
+          (p.etapa==="ganho"&&p.fechadoEm?' <span style="font-weight:400;color:var(--muted-c)">'+esc(dm(p.fechadoEm))+'</span>':'')+'</td></tr>';
+      }).join("")+'</tbody></table></div></div>';
+  }
+  return h+'</div>';
+}
+
 function render(){
   var ativos=estado.pessoas.filter(ativa);
   var g=grupos();
@@ -890,7 +962,7 @@ function render(){
   if(repetidas.length)avisoHTML+='<div class="aviso erro">Telefone repetido na base — o telefone é a chave e não pode repetir: '+esc(repetidas.join("; "))+'. Abra uma das duas e corrija.</div>';
   if(somenteLeitura)avisoHTML='<div class="aviso">Esta janela está em modo leitura — o que você mudar aqui fica só neste aparelho. Abra o link pela sua própria conta para salvar na nuvem.</div>';
   else if(aviso)avisoHTML='<div class="aviso erro">'+esc(aviso)+'</div>';
-  v.innerHTML=avisoHTML+barraEvento()+(aba==="hoje"?viewHoje():aba==="funil"?viewFunil():aba==="painel"?viewPainel():viewPessoas());
+  v.innerHTML=avisoHTML+barraEvento()+(aba==="hoje"?viewHoje():aba==="funil"?viewFunil():aba==="painel"?viewPainel():aba==="proposta"?viewProposta():viewPessoas());
 }
 
 /* ============ toast ============ */
