@@ -81,6 +81,35 @@ button{cursor:pointer}
 }
 .mes[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
 
+/* ---------- vendas do mês ---------- */
+.vendasMes{
+  border:1px solid var(--line);background:var(--surface);border-radius:var(--r);
+  overflow:hidden;margin-top:18px;
+}
+.vendasMes .faixa{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:11px 16px;background:var(--win-soft);border-bottom:1px solid var(--line);
+}
+.vendasMes .faixa b{
+  font-family:var(--display);font-size:12.5px;font-weight:800;letter-spacing:.09em;
+  text-transform:uppercase;color:var(--win);
+}
+.vendasMes .faixa span{font-size:12.5px;font-weight:700;color:var(--win);opacity:.8}
+.vendasMes .corpo{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line-2)}
+.vendasMes .celula{background:var(--surface);padding:16px}
+.vendasMes .celula.larga{grid-column:1 / -1}
+.vendasMes .celula b{
+  display:block;font-family:var(--display);font-weight:800;letter-spacing:-.025em;
+  line-height:1.05;font-variant-numeric:tabular-nums;color:var(--ink);
+}
+.vendasMes .celula.principal b{font-size:clamp(30px,9vw,40px);color:var(--win)}
+.vendasMes .celula b{font-size:24px}
+.vendasMes .celula span{
+  display:block;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--muted-c);margin-top:5px;
+}
+.vendasMes .vazio{padding:20px 16px;font-size:14.5px;color:var(--muted-c);line-height:1.5}
+
 /* ---------- proposta na ficha ---------- */
 .propBox{border:1px solid var(--line);background:var(--surface-2);border-radius:var(--r-sm);padding:14px 15px;margin-top:15px;display:flex;flex-direction:column;gap:10px}
 .propBox .cab{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
@@ -788,6 +817,25 @@ function diasEntre(a,b){
   if(!a||!b)return null;
   return Math.round((new Date(b+"T00:00:00")-new Date(a+"T00:00:00"))/86400000);
 }
+function blocoVendasMes(){
+  var base=pessoasDoMes();
+  var g=base.filter(function(p){return p.etapa==="ganho";});
+  var total=g.reduce(function(a,p){return a+(p.valor||0);},0);
+  var rot=mesSel==="todos"?"Vendas no total":"Vendas em "+rotuloMes(mesSel);
+  var props=base.filter(function(p){return p.propostaEm;}).length;
+  if(!g.length){
+    return '<div class="vendasMes"><div class="faixa"><b>'+esc(rot)+'</b></div>'+
+      '<p class="vazio">Nenhuma venda fechada'+(mesSel==="todos"?"":" neste mês")+
+      (props?". Foram "+props+" proposta"+(props>1?"s":"")+" enviada"+(props>1?"s":"")+".":".")+'</p></div>';
+  }
+  var h='<div class="vendasMes"><div class="faixa"><b>'+esc(rot)+'</b>'+
+        (props?'<span>'+props+' proposta'+(props>1?"s":"")+' enviada'+(props>1?"s":"")+'</span>':'')+'</div><div class="corpo">';
+  h+='<div class="celula principal"><b>'+esc(moeda(total))+'</b><span>faturado</span></div>';
+  h+='<div class="celula"><b>'+g.length+'</b><span>'+(g.length===1?"venda fechada":"vendas fechadas")+'</span></div>';
+  h+='<div class="celula"><b>'+esc(moeda(total/g.length))+'</b><span>ticket médio</span></div>';
+  if(props)h+='<div class="celula larga"><b>'+Math.round(g.length/props*100)+'%</b><span>das propostas viraram venda</span></div>';
+  return h+'</div></div>';
+}
 function blocoCiclo(){
   var g=pessoasDoMes().filter(function(p){return p.etapa==="ganho"&&p.propostaEm&&p.fechadoEm;});
   var dias=g.map(function(p){return diasEntre(p.propostaEm,p.fechadoEm);}).filter(function(n){return n!==null&&n>=0;});
@@ -871,7 +919,7 @@ function viewPainel(){
       '<span class="pct">'+pct(f.n)+'%</span></div>';
   }).join("");
 
-  return rosca(fatias,d.total)+'<div class="legenda">'+leg+'</div>'+
+  return blocoVendasMes()+rosca(fatias,d.total)+'<div class="legenda">'+leg+'</div>'+
     '<div class="kpis">'+
       '<div class="kpi"><b>'+pct(d.responderam)+'%</b><span>responderam</span><small>'+d.responderam+' de '+d.total+' pessoas</small></div>'+
       '<div class="kpi"><b>'+(d.total?(d.fechou/d.total*100).toFixed(1):0)+'%</b><span>viraram venda</span><small>'+d.fechou+' de '+d.total+'</small></div>'+
