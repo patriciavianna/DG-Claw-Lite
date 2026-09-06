@@ -424,6 +424,14 @@ function jaCadastrado(tel,ignoraId){
   }
   return null;
 }
+function auditaChaves(){
+  var vis={},probs=[];
+  estado.pessoas.forEach(function(p){
+    var k=soDigitos(p.contato); if(k.length<8)return;
+    if(vis[k])probs.push(p.nome+" e "+vis[k]); else vis[k]=p.nome;
+  });
+  return probs;
+}
 function nomeParecido(nome,ignoraId){
   var n=String(nome||"").trim().toLowerCase();
   if(n.length<3)return null;
@@ -635,6 +643,9 @@ function viewHoje(){
   h+=grupoHTML("Hoje",g.hoje,"hoje");
   h+=grupoHTML("Próximos 7 dias",g.semana);
   h+=grupoHTML("Sem próximo passo",g.sem);
+  var semTel=estado.pessoas.filter(function(p){return ativa(p)&&soDigitos(p.contato).length<8;});
+  if(semTel.length)h+='<div class="aviso" style="margin-top:20px">Sem telefone: '+
+    esc(semTel.map(function(p){return p.nome;}).join(", "))+'. Sem a chave, não dá para abrir a conversa nem impedir cadastro repetido.</div>';
   h+=grupoHTML("Mais para frente",g.depois);
   if(!h){
     h='<div class="vazio-msg" style="margin-top:26px"><b>Nada te esperando.</b>'+
@@ -811,6 +822,8 @@ function render(){
 
   var v=document.getElementById("view");
   var avisoHTML="";
+  var repetidas=auditaChaves();
+  if(repetidas.length)avisoHTML+='<div class="aviso erro">Telefone repetido na base — o telefone é a chave e não pode repetir: '+esc(repetidas.join("; "))+'. Abra uma das duas e corrija.</div>';
   if(somenteLeitura)avisoHTML='<div class="aviso">Esta janela está em modo leitura — o que você mudar aqui fica só neste aparelho. Abra o link pela sua própria conta para salvar na nuvem.</div>';
   else if(aviso)avisoHTML='<div class="aviso erro">'+esc(aviso)+'</div>';
   v.innerHTML=avisoHTML+barraEvento()+(aba==="hoje"?viewHoje():aba==="funil"?viewFunil():aba==="painel"?viewPainel():viewPessoas());
