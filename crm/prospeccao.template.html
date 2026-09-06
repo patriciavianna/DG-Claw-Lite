@@ -486,6 +486,7 @@ function normaliza(s){
       proximaData:p.proximaData||"", proximaOque:p.proximaOque||"",
       notas:Array.isArray(p.notas)?p.notas:[], cadencia:Array.isArray(p.cadencia)?p.cadencia:[],
       indicadoPor:p.indicadoPor||"", deCliente:!!p.deCliente, proximaTurma:!!p.proximaTurma,
+      fechadoEm:p.fechadoEm||"",
       classificacao:p.classificacao||classificaPor(p.origem),
       criadoEm:p.criadoEm||new Date().toISOString()
     };
@@ -608,6 +609,7 @@ function cardHTML(p){
   var sub=[];
   if(p.empresa)sub.push(esc(p.empresa));
   if(p.origem)sub.push(esc(p.origem));
+  if(p.etapa==="ganho"&&p.fechadoEm)sub.push("fechado em "+esc(dm(p.fechadoEm)));
   if(p.classificacao&&p.classificacao!=="Não classificado")sub.push(esc(p.classificacao));
   if(p.proximaTurma)sub.push("próxima turma");
   if(p.indicadoPor)sub.push("indicada por "+esc(p.indicadoPor)+(p.deCliente?" (cliente)":""));
@@ -750,6 +752,18 @@ function veredito(d){
     '<p>'+texto+'</p><p>'+t2+'</p><p class="ressalva">'+res+'</p></div>';
 }
 
+function listaVendas(){
+  var g=estado.pessoas.filter(function(p){return p.etapa==="ganho";});
+  if(!g.length)return"";
+  g.sort(function(a,b){return (a.fechadoEm||"9999").localeCompare(b.fechadoEm||"9999");});
+  return '<div class="grupo" style="margin-top:26px"><div class="grupo-h">'+
+    '<h2>Vendas fechadas</h2><span class="cnt">'+g.length+'</span><span class="rule"></span></div><div class="legenda">'+
+    g.map(function(p){
+      return '<div class="leg"><span class="pct" style="text-align:left;min-width:52px">'+esc(p.fechadoEm?dm(p.fechadoEm):"—")+'</span>'+
+        '<span class="nome">'+esc(p.nome)+'</span>'+
+        '<span class="qtd">'+esc(moeda(p.valor)||"—")+'</span></div>';
+    }).join("")+'</div></div>';
+}
 function porClassificacao(){
   var m={},ganhos={};
   estado.pessoas.forEach(function(p){
@@ -787,7 +801,7 @@ function viewPainel(){
       '<div class="kpi"><b>'+pct(d.responderam)+'%</b><span>responderam</span><small>'+d.responderam+' de '+d.total+' pessoas</small></div>'+
       '<div class="kpi"><b>'+(d.total?(d.fechou/d.total*100).toFixed(1):0)+'%</b><span>viraram venda</span><small>'+d.fechou+' de '+d.total+'</small></div>'+
       '<div class="kpi"><b>'+esc(moeda(d.faturado)||"R$ 0")+'</b><span>fechado</span><small>soma do que já é venda</small></div>'+
-    '</div>'+porClassificacao()+veredito(d);
+    '</div>'+listaVendas()+porClassificacao()+veredito(d);
 }
 
 function render(){
@@ -959,6 +973,10 @@ function sheetPessoa(id){
       '<div class="campo"><label for="e-contato">Contato</label><input id="e-contato" value="'+esc(p.contato)+'"></div>'+
       '<div class="campo"><label for="e-valor">Valor (R$)</label><input id="e-valor" type="number" inputmode="numeric" value="'+(p.valor||"")+'" placeholder="0"></div>'+
     '</div>'+
+    '<div class="dupla">'+
+      '<div class="campo"><label for="e-fechado">Fechado em</label><input id="e-fechado" type="date" value="'+esc(p.fechadoEm)+'"></div>'+
+      '<div class="campo"><label>Cadastrado em</label><input type="text" value="'+esc(dm((p.criadoEm||"").slice(0,10))+"/"+(p.criadoEm||"").slice(0,4))+'" disabled></div>'+
+    '</div>'+
     '<div class="campo"><label>Guardar para depois</label>'+
       '<div class="indic"><label><input type="checkbox" id="e-proxima"'+(p.proximaTurma?" checked":"")+'> voltar na próxima turma</label></div>'+
       '<p class="dica">Marque quem disse não agora mas pode dizer sim depois. Não gera cobrança nem alarme — só entra no filtro Próxima turma.</p></div>'+
@@ -1036,6 +1054,7 @@ function sheetPessoa(id){
       p.tipo=inn.querySelector("#e-tipo").value;
       p.classificacao=inn.querySelector("#e-class").value;
       p.valor=vl===""?null:Number(vl);
+      p.fechadoEm=inn.querySelector("#e-fechado").value;
       p.etapa=novaEtapa;
       p.proximaOque=inn.querySelector("#e-oque").value.trim();
       p.proximaData=inn.querySelector("#e-data").value;
