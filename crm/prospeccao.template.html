@@ -233,6 +233,14 @@ button{cursor:pointer}
 .indic input[type=checkbox]{width:20px;height:20px;accent-color:var(--accent);flex:none}
 .indic input[type=text]{flex:1;min-width:0}
 
+.tab-mes{overflow-x:auto;margin-top:6px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface)}
+.tab-mes table{border-collapse:collapse;width:100%;font-size:13.5px;min-width:400px}
+.tab-mes th,.tab-mes td{padding:10px 12px;text-align:right;border-bottom:1px solid var(--line-2);font-variant-numeric:tabular-nums;white-space:nowrap}
+.tab-mes th:first-child,.tab-mes td:first-child{text-align:left}
+.tab-mes tr:last-child td{border-bottom:none}
+.tab-mes th{font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);background:var(--surface-2)}
+.tab-mes tr.total td{font-weight:800;background:var(--surface-2)}
+
 /* ---------- busca ---------- */
 .busca{position:relative;margin-top:18px}
 .busca input{
@@ -486,7 +494,7 @@ function normaliza(s){
       proximaData:p.proximaData||"", proximaOque:p.proximaOque||"",
       notas:Array.isArray(p.notas)?p.notas:[], cadencia:Array.isArray(p.cadencia)?p.cadencia:[],
       indicadoPor:p.indicadoPor||"", deCliente:!!p.deCliente, proximaTurma:!!p.proximaTurma,
-      fechadoEm:p.fechadoEm||"",
+      fechadoEm:p.fechadoEm||"", propostaEm:p.propostaEm||"",
       classificacao:p.classificacao||classificaPor(p.origem),
       criadoEm:p.criadoEm||new Date().toISOString()
     };
@@ -752,6 +760,48 @@ function veredito(d){
     '<p>'+texto+'</p><p>'+t2+'</p><p class="ressalva">'+res+'</p></div>';
 }
 
+function diasEntre(a,b){
+  if(!a||!b)return null;
+  return Math.round((new Date(b+"T00:00:00")-new Date(a+"T00:00:00"))/86400000);
+}
+function blocoCiclo(){
+  var g=estado.pessoas.filter(function(p){return p.etapa==="ganho"&&p.propostaEm&&p.fechadoEm;});
+  var dias=g.map(function(p){return diasEntre(p.propostaEm,p.fechadoEm);}).filter(function(n){return n!==null&&n>=0;});
+  var abertas=estado.pessoas.filter(function(p){return p.etapa==="proposta"&&p.propostaEm;});
+  var esperando=abertas.map(function(p){return diasEntre(p.propostaEm,hojeISO());}).filter(function(n){return n!==null&&n>=0;});
+  if(!dias.length&&!esperando.length)return"";
+  var med=dias.length?(dias.reduce(function(a,b){return a+b;},0)/dias.length):null;
+  var h='<div class="grupo" style="margin-top:26px"><div class="grupo-h"><h2>Ciclo da venda</h2><span class="rule"></span></div><div class="kpis">';
+  h+='<div class="kpi"><b>'+(med===null?"—":(med%1?med.toFixed(1):med))+'</b><span>dias em média</span><small>'+
+     (dias.length?"da proposta ao sim, em "+dias.length+" venda"+(dias.length>1?"s":""):"ainda sem venda com as duas datas")+'</small></div>';
+  if(dias.length>1)h+='<div class="kpi"><b>'+Math.min.apply(null,dias)+'–'+Math.max.apply(null,dias)+'</b><span>mais rápida / mais lenta</span><small>em dias</small></div>';
+  if(esperando.length)h+='<div class="kpi"><b>'+Math.max.apply(null,esperando)+'</b><span>dias esperando</span><small>a proposta em aberto há mais tempo, de '+esperando.length+'</small></div>';
+  return h+'</div></div>';
+}
+function blocoMes(){
+  var m={};
+  function pega(k){ if(!m[k])m[k]={prop:0,vend:0,fat:0}; return m[k]; }
+  estado.pessoas.forEach(function(p){
+    if(p.propostaEm)pega(p.propostaEm.slice(0,7)).prop++;
+    if(p.etapa==="ganho"&&p.fechadoEm){var r=pega(p.fechadoEm.slice(0,7));r.vend++;r.fat+=(p.valor||0);}
+  });
+  var ks=Object.keys(m).sort();
+  if(!ks.length)return"";
+  var MES=["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];
+  var tp=0,tv=0,tf=0;
+  var linhas=ks.map(function(k){
+    var r=m[k]; tp+=r.prop; tv+=r.vend; tf+=r.fat;
+    var y=k.split("-");
+    return '<tr><td>'+MES[Number(y[1])-1]+"/"+y[0].slice(2)+'</td><td>'+r.prop+'</td><td>'+r.vend+'</td>'+
+      '<td>'+(r.prop?Math.round(r.vend/r.prop*100)+"%":"—")+'</td>'+
+      '<td>'+(r.fat?esc(moeda(r.fat)):"—")+'</td>'+
+      '<td>'+(r.vend?esc(moeda(r.fat/r.vend)):"—")+'</td></tr>';
+  }).join("");
+  return '<div class="grupo" style="margin-top:26px"><div class="grupo-h"><h2>Mês a mês</h2><span class="rule"></span></div>'+
+    '<div class="tab-mes"><table><thead><tr><th>Mês</th><th>Propostas</th><th>Vendas</th><th>Conversão</th><th>Faturado</th><th>Ticket</th></tr></thead><tbody>'+
+    linhas+'<tr class="total"><td>Total</td><td>'+tp+'</td><td>'+tv+'</td><td>'+(tp?Math.round(tv/tp*100)+"%":"—")+
+    '</td><td>'+(tf?esc(moeda(tf)):"—")+'</td><td>'+(tv?esc(moeda(tf/tv)):"—")+'</td></tr></tbody></table></div></div>';
+}
 function listaVendas(){
   var g=estado.pessoas.filter(function(p){return p.etapa==="ganho";});
   if(!g.length)return"";
@@ -801,7 +851,7 @@ function viewPainel(){
       '<div class="kpi"><b>'+pct(d.responderam)+'%</b><span>responderam</span><small>'+d.responderam+' de '+d.total+' pessoas</small></div>'+
       '<div class="kpi"><b>'+(d.total?(d.fechou/d.total*100).toFixed(1):0)+'%</b><span>viraram venda</span><small>'+d.fechou+' de '+d.total+'</small></div>'+
       '<div class="kpi"><b>'+esc(moeda(d.faturado)||"R$ 0")+'</b><span>fechado</span><small>soma do que já é venda</small></div>'+
-    '</div>'+listaVendas()+porClassificacao()+veredito(d);
+    '</div>'+blocoCiclo()+blocoMes()+listaVendas()+porClassificacao()+veredito(d);
 }
 
 function render(){
@@ -974,9 +1024,10 @@ function sheetPessoa(id){
       '<div class="campo"><label for="e-valor">Valor (R$)</label><input id="e-valor" type="number" inputmode="numeric" value="'+(p.valor||"")+'" placeholder="0"></div>'+
     '</div>'+
     '<div class="dupla">'+
+      '<div class="campo"><label for="e-proposta">Proposta enviada em</label><input id="e-proposta" type="date" value="'+esc(p.propostaEm)+'"></div>'+
       '<div class="campo"><label for="e-fechado">Fechado em</label><input id="e-fechado" type="date" value="'+esc(p.fechadoEm)+'"></div>'+
-      '<div class="campo"><label>Cadastrado em</label><input type="text" value="'+esc(dm((p.criadoEm||"").slice(0,10))+"/"+(p.criadoEm||"").slice(0,4))+'" disabled></div>'+
     '</div>'+
+    '<div class="campo"><label>Cadastrado em</label><input type="text" value="'+esc(dm((p.criadoEm||"").slice(0,10))+"/"+(p.criadoEm||"").slice(0,4))+'" disabled></div>'+
     '<div class="campo"><label>Guardar para depois</label>'+
       '<div class="indic"><label><input type="checkbox" id="e-proxima"'+(p.proximaTurma?" checked":"")+'> voltar na próxima turma</label></div>'+
       '<p class="dica">Marque quem disse não agora mas pode dizer sim depois. Não gera cobrança nem alarme — só entra no filtro Próxima turma.</p></div>'+
@@ -1055,6 +1106,8 @@ function sheetPessoa(id){
       p.classificacao=inn.querySelector("#e-class").value;
       p.valor=vl===""?null:Number(vl);
       p.fechadoEm=inn.querySelector("#e-fechado").value;
+      p.propostaEm=inn.querySelector("#e-proposta").value;
+      if(p.etapa==="proposta"&&!p.propostaEm)p.propostaEm=hojeISO();
       p.etapa=novaEtapa;
       p.proximaOque=inn.querySelector("#e-oque").value.trim();
       p.proximaData=inn.querySelector("#e-data").value;
