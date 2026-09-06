@@ -256,6 +256,14 @@ button{cursor:pointer}
 .tab-mes tr:last-child td{border-bottom:none}
 .tab-mes th{font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);background:var(--surface-2)}
 .tab-mes tr.total td{font-weight:800;background:var(--surface-2)}
+.tab-mes tbody tr{cursor:pointer}
+.tab-mes tbody tr.zero td{color:var(--muted-c)}
+.tab-mes tbody tr.sel td{background:var(--accent-soft)}
+.tab-mes tbody tr.melhor td{background:var(--win-soft)}
+.tab-mes tbody tr.sel.melhor td{background:var(--accent-soft)}
+.coroa{font-size:9.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--win);
+  background:var(--surface);border:1px solid var(--win);border-radius:99px;padding:1px 6px;margin-left:6px}
+.tab-mes tbody tr.total{cursor:default}
 
 /* ---------- oferta ---------- */
 .oferta{display:flex;flex-direction:column;gap:24px;margin-top:20px}
@@ -851,29 +859,45 @@ function blocoCiclo(){
   return h+'</div></div>';
 }
 function blocoMes(){
-  if(mesSel!=="todos")return"";
-  var m={};
-  function pega(k){ if(!m[k])m[k]={prop:0,vend:0,fat:0}; return m[k]; }
+  var m={},minK=null,hojeK=hojeISO().slice(0,7);
+  function pega(k){ if(!m[k])m[k]={prop:0,vend:0,fat:0,pess:0}; if(!minK||k<minK)minK=k; return m[k]; }
   estado.pessoas.forEach(function(p){
+    var base=mesDe(p); if(base)pega(base).pess++;
     if(p.propostaEm)pega(p.propostaEm.slice(0,7)).prop++;
     if(p.etapa==="ganho"&&p.fechadoEm){var r=pega(p.fechadoEm.slice(0,7));r.vend++;r.fat+=(p.valor||0);}
   });
-  var ks=Object.keys(m).sort();
-  if(!ks.length)return"";
-  var MES=["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];
+  if(!minK)return"";
+  if(hojeK>minK)pega(hojeK);
+
+  // série contínua: nenhum mês fica de fora, mesmo zerado
+  var ks=[],a=minK.split("-"),ano=Number(a[0]),mes=Number(a[1]);
+  var fim=hojeK.split("-"),anoF=Number(fim[0]),mesF=Number(fim[1]);
+  while(ano<anoF||(ano===anoF&&mes<=mesF)){
+    ks.push(ano+"-"+String(mes).padStart(2,"0"));
+    mes++; if(mes>12){mes=1;ano++;}
+  }
+
+  var melhor=null;
+  ks.forEach(function(k){ var r=m[k]; if(r&&r.fat>0&&(!melhor||r.fat>m[melhor].fat))melhor=k; });
+
   var tp=0,tv=0,tf=0;
   var linhas=ks.map(function(k){
-    var r=m[k]; tp+=r.prop; tv+=r.vend; tf+=r.fat;
-    var y=k.split("-");
-    return '<tr><td>'+MES[Number(y[1])-1]+"/"+y[0].slice(2)+'</td><td>'+r.prop+'</td><td>'+r.vend+'</td>'+
+    var r=m[k]||{prop:0,vend:0,fat:0,pess:0};
+    tp+=r.prop; tv+=r.vend; tf+=r.fat;
+    var cls=[]; if(k===mesSel)cls.push("sel"); if(k===melhor)cls.push("melhor"); if(!r.pess&&!r.prop&&!r.vend)cls.push("zero");
+    return '<tr class="'+cls.join(" ")+'" data-mes="'+k+'"><td>'+rotuloMes(k)+(k===melhor?' <span class="coroa">melhor</span>':'')+'</td>'+
+      '<td>'+r.prop+'</td><td>'+r.vend+'</td>'+
       '<td>'+(r.prop?Math.round(r.vend/r.prop*100)+"%":"—")+'</td>'+
       '<td>'+(r.fat?esc(moeda(r.fat)):"—")+'</td>'+
       '<td>'+(r.vend?esc(moeda(r.fat/r.vend)):"—")+'</td></tr>';
   }).join("");
+
   return '<div class="grupo" style="margin-top:26px"><div class="grupo-h"><h2>Mês a mês</h2><span class="rule"></span></div>'+
     '<div class="tab-mes"><table><thead><tr><th>Mês</th><th>Propostas</th><th>Vendas</th><th>Conversão</th><th>Faturado</th><th>Ticket</th></tr></thead><tbody>'+
     linhas+'<tr class="total"><td>Total</td><td>'+tp+'</td><td>'+tv+'</td><td>'+(tp?Math.round(tv/tp*100)+"%":"—")+
-    '</td><td>'+(tf?esc(moeda(tf)):"—")+'</td><td>'+(tv?esc(moeda(tf/tv)):"—")+'</td></tr></tbody></table></div></div>';
+    '</td><td>'+(tf?esc(moeda(tf)):"—")+'</td><td>'+(tv?esc(moeda(tf/tv)):"—")+'</td></tr></tbody></table></div>'+
+    (melhor?'<p class="dica" style="margin-top:10px">Melhor mês até agora: <b>'+rotuloMes(melhor)+'</b>, com '+esc(moeda(m[melhor].fat))+' em '+m[melhor].vend+' venda'+(m[melhor].vend>1?"s":"")+'. Toque em qualquer linha para ver só aquele mês.</p>':'')+
+    '</div>';
 }
 function listaVendas(){
   var g=pessoasDoMes().filter(function(p){return p.etapa==="ganho";});
@@ -1294,6 +1318,8 @@ function liga(){
     if(c){sheetPessoa(c.dataset.id);return;}
     var f=e.target.closest("[data-filtro]");
     if(f){filtro=f.dataset.filtro;render();return;}
+    var lm=e.target.closest("tr[data-mes]");
+    if(lm){mesSel=(mesSel===lm.dataset.mes?"todos":lm.dataset.mes);render();window.scrollTo({top:0,behavior:"smooth"});return;}
     var a=e.target.closest("[data-acao]");
     if(!a)return;
     if(a.dataset.acao==="copiar-hoje")copiar(textoHoje());
