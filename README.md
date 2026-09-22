@@ -29,7 +29,7 @@ neutra, nunca dentro da pasta que será do agente).
 O wizard cuida do resto: check-up, nome e personalidade, pasta e memória, bot
 no BotFather, primeira partida com pareamento já trancado e os testes.
 
-## Dois extras opcionais (o wizard pergunta, você decide)
+## Três extras opcionais (o wizard pergunta, você decide)
 
 **Áudio — ele escuta suas mensagens de voz** (Passo 5a). Dois caminhos: a
 **Groq**, recomendada, com faixa grátis generosa (2.000 transcrições e 8h de
@@ -43,6 +43,27 @@ depois pedindo *"liga a transcrição de áudio"*.
 quiser). Usa os **connectors nativos** do Claude Code: você autoriza sua conta
 no navegador, sem Google Cloud e sem OAuth na mão. Depois de autorizar, **religue
 a janela** do agente pra ele enxergar as ferramentas novas.
+
+**Instagram — ele escreve seus posts, na sua voz** (Passo 5c, ou
+`/dgclaw-lite:instagram` quando quiser). Instala um pacote aberto de **9 skills
+de Instagram** — legenda com gancho, carrossel card a card, hashtags
+dimensionadas, planejamento de semana — e, por cima delas, carrega o **`marca.md`
+da pasta do agente**: posicionamento, persona, tom de voz, identidade visual,
+pilares e regras. É esse arquivo que separa um texto certo e sem dono de um
+texto que soa como você; sem ele o agente diz que ainda não conhece sua marca,
+em vez de fingir que conhece.
+
+Dois opcionais dentro do opcional: **publicar** de verdade (pelo Publora — exige
+conta **Business ou Creator**, regra do Instagram) e **gerar a arte** do post
+(pela Pixfaro, paga por imagem). Sem nenhuma chave ele já trabalha em **modo
+rascunho**: escreve tudo e você posta no app.
+
+E uma trava que não se desliga: **nada vai pro ar sem você dizer "pode
+publicar"**. "Gostei" não conta.
+
+> As 9 skills são de [Serge Bulaev](https://github.com/sergebulaev/instagram-skills),
+> sob licença MIT, instaladas do repositório dele. O DG Claw Lite não copia nem
+> redistribui esse código — ele faz a ponte e traz a camada de marca.
 
 ## A cerimônia de religar
 
@@ -87,9 +108,14 @@ quem te deu o plugin.
 - Computador desligado ou dormindo = agente dormindo. **Não é 24/7.**
 - Mensagem mandada com ele desligado **se perde**. É só reenviar depois.
 - **Nunca duas janelas** do agente ao mesmo tempo (erro 409, bot mudo).
-- **Áudio e Google são opcionais e ficam desligados** até você ligar (Passos 5a
-  e 5b). Sem áudio ligado, ele avisa que não escuta e pede por texto; sem Google
-  conectado, ele diz que dá pra conectar em vez de inventar resposta.
+- **Áudio, Google e Instagram são opcionais e ficam desligados** até você ligar
+  (Passos 5a, 5b e 5c). Sem áudio ligado, ele avisa que não escuta e pede por
+  texto; sem Google conectado, ele diz que dá pra conectar em vez de inventar
+  resposta; sem marca carregada, ele diz que ainda não conhece seu jeito de
+  escrever.
+- **Publicar no Instagram exige conta Business ou Creator** (regra do Instagram,
+  não do plugin) e depende do Publora estar no ar. A geração de arte é **paga
+  por imagem**. Sem nada disso ligado, ele segue escrevendo em modo rascunho.
 - Tarefa agendada só roda com o computador ligado.
 - **Agendamento repetitivo nativo é evitado** (bug conhecido: para de rodar em
   silêncio). O agente usa uma **corrente de avulsos** — cada rodada entrega o

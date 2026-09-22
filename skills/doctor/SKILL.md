@@ -33,7 +33,7 @@ Depois rode as três partes **em sequência**, contando o que achou em cada uma.
 
 ## Parte A — Saúde do plugin
 
-Verifique os 7 itens abaixo sozinho e **mostre o resultado** como checklist,
+Verifique os 8 itens abaixo sozinho e **mostre o resultado** como checklist,
 com ✅ ou ❌ em cada linha. Não peça permissão pra ler arquivos — só leia.
 
 **A1. Os arquivos da pasta existem?**
@@ -119,6 +119,42 @@ padrão (ele avisa honesto que não escuta e pede por texto). Existindo, leia o
 
 Não deu pra consertar na hora? Grave `"provider": "off"` e avise: ele volta a
 pedir por texto, e o resto do agente continua funcionando normalmente.
+
+**A8. O Instagram está ligado do jeito certo?**
+
+Só vale se a pessoa usa o agente pra Instagram — não existe `marca.md` nem
+`instagram.json`? Marque "não usa" e siga, **não é defeito**.
+
+Confira nesta ordem, que é a ordem em que as coisas quebram:
+
+- **As skills estão instaladas?** `claude plugin list` mostra
+  `instagram-skills`? Sumiu, marque ❌ — reinstala pelo
+  `/dgclaw-lite:instagram`.
+- **O `marca.md` existe e tem conteúdo?** É o que faz ele escrever como o dono
+  em vez de genérico. Vazio ou só com o molde, marque ❌ e ofereça preencher.
+- **O espelho da marca sobreviveu?** Procure `references/voice-profile.md`
+  dentro da pasta do plugin `instagram-skills` e veja se o cabeçalho diz
+  `filled: yes`. **Este é o item que mais quebra**, e o sintoma é traiçoeiro:
+  ele volta a escrever bonito e genérico, do nada, sem erro nenhum. A causa é
+  quase sempre uma atualização do plugin, que devolve o arquivo ao original.
+  Marque ❌ e ofereça refazer o espelho a partir do `marca.md` — é rápido.
+- **O `instagram.json` está completo?** Com `"provider": "publora"`, precisa de
+  `publora_api_key` começando com `sk_` e `instagram_platform_id` no formato
+  `instagram-11223344`. `"provider": "off"` é ✅ — desligado de propósito.
+- **A conexão com o Instagram ainda está viva?** Token de rede social expira
+  sozinho de tempos em tempos. Confira:
+
+      curl -sS https://api.publora.com/api/v1/platform-connections -H "x-publora-key: <chave>"
+
+  O `instagram_platform_id` configurado ainda aparece na lista? Sumiu, marque ❌
+  e explique sem drama: a autorização caiu e precisa ser refeita no painel do
+  Publora (Channels), não tem nada quebrado na pasta.
+- **Tem `pixfaro_token`?** Sem ele o agente não gera arte — não é erro, é opção.
+  Registre como "geração de arte desligada".
+
+> **Privacidade deste item.** Nunca escreva no relatório a chave, o `@` do
+> perfil, o `instagram_platform_id` ou qualquer trecho do `marca.md`. Só ✅/❌ e
+> o nome do que falhou.
 
 Feche a Parte A com o checklist ✅/❌ e uma frase do tipo: "estrutura ok, o
 problema deve ser memória" ou "achei X, vamos consertar".

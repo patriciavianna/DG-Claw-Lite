@@ -59,6 +59,7 @@ MEU AGENTE (MODO NATIVO) — progresso
 [ ] 5. Teste de fogo + memória
 [ ] 5a. Áudio: ele escuta suas mensagens de voz? (opcional)
 [ ] 5b. Conectar o Google: Drive, Gmail e Agenda (opcional)
+[ ] 5c. Instagram: ele escreve, ilustra e publica seus posts (opcional)
 [ ] 6. Rotina de teste (tarefa agendada)
 [ ] 7. Manutenção diária da memória (a reflexão dele)
 [ ] 8. A cerimônia de religar (o comando + atalho opcional)
@@ -337,6 +338,27 @@ comando de sempre**, que é o que faz a sessão dele enxergar as ferramentas nov
 do Google apareceu no `/mcp`? Diga a verdade: a conta ou o plano dela pode não
 ter os connectors habilitados — **não é defeito do plugin**; registre como
 pendente e siga o wizard.
+
+## Passo 5c — Instagram: ele escreve e publica  → marca [5c]
+
+Também **opcional**, e só faz sentido pra quem produz conteúdo. Pergunte: *"você
+cuida de um Instagram — o seu ou de clientes? Posso ensinar ele a escrever os
+posts na sua voz, gerar a arte e até publicar pra você."* Não é o caso? Siga em
+frente: dá pra ligar depois com `/dgclaw-lite:instagram`.
+
+Quis? Conduza pela skill `/dgclaw-lite:instagram` (leia
+`${CLAUDE_PLUGIN_ROOT}/skills/instagram/SKILL.md`). O resumo: (1) instalar o
+pacote aberto de 9 skills de Instagram, com o mesmo fallback de duas linhas
+`/plugin` coladas por ela se a permissão bloquear; (2) **montar o `marca.md`** —
+o passo que importa de verdade, porque sem ele o agente escreve correto e
+genérico; (3) opcionalmente ligar a publicação (Publora) e a geração de arte
+(Pixfaro).
+
+**Duas coisas que não podem faltar na conversa:** publicar por API exige conta
+**Business ou Creator** (pessoal não publica, é regra do Instagram), e **nada vai
+pro ar sem o "pode publicar" dela** — o `CLAUDE.md` já traz essa trava, e vale
+dizer em voz alta que ela existe. Qualquer tropeço aqui: registre como pendente,
+diga que o modo rascunho já funciona e **siga pro Passo 6**.
 
 ## Passo 6 — Rotina de teste (tarefa agendada)  → marca [6]
 

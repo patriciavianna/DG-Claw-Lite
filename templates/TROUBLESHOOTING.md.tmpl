@@ -115,6 +115,59 @@ novo**. Feche a janela do {{NOME}} e abra com o comando de sempre. Se ainda
 assim ele não enxergar, rode `/dgclaw-lite:connect` na janela dele e confira, no
 `/mcp`, se as conexões do Google aparecem como conectadas.
 
+## 11. Ele voltou a escrever "genérico", sem a cara da sua marca
+
+O sintoma engana porque **não dá erro nenhum** — o texto sai bonito, correto e
+sem dono. A causa quase sempre é esta: as skills de Instagram leem a sua marca
+de um arquivo espelho que mora **dentro da pasta do plugin**, e uma atualização
+do plugin devolve esse arquivo ao original, apagando a sua marca dele.
+
+Conserto: peça o diagnóstico (`roda seu diagnóstico`) — o item **A8** detecta e
+refaz o espelho a partir do seu `marca.md`. Ou peça direto: *"refaz o espelho da
+minha marca"*.
+
+Se ele disser que **não encontrou o `marca.md`**, é outra coisa: o arquivo da sua
+marca não foi criado ainda. Rode `/dgclaw-lite:instagram` na janela dele.
+
+## 12. Ele não publica no Instagram
+
+Confira nesta ordem:
+
+1. **Sua conta é Business ou Creator?** Conta **pessoal não publica por API** —
+   é regra do Instagram, não do {{NOME}}. A conversão é gratuita e leva 1 minuto
+   (Instagram → Configurações → Tipo de conta).
+2. **Ele está só em modo rascunho?** Se o `instagram.json` da pasta dele tem
+   `"provider": "off"`, ele escreve mas não posta, de propósito. Peça *"liga a
+   publicação do Instagram"*.
+3. **A autorização caiu?** Token de rede social expira sozinho de tempos em
+   tempos. Entre no painel do Publora, em **Channels**, e reconecte o Instagram.
+   O diagnóstico também detecta isso.
+4. **Faltou a imagem?** O Instagram **exige mídia** — post só de texto é
+   recusado. Mande a foto ou o vídeo pelo Telegram junto com o pedido.
+
+## 13. Ele pediu autorização e eu já tinha dito que estava bom
+
+Isso é de propósito, não é ele sendo lento. Um "gostei" ou "ficou ótimo" **não
+conta como autorização** — publicar é ação que não tem desfazer, então ele exige
+que você diga, com todas as letras, **"pode publicar"**.
+
+Se você quiser que ele publique, responda exatamente isso. Não existe jeito de
+desligar essa trava, e é intencional.
+
+## 14. A arte saiu feia, genérica ou na cor errada
+
+O {{NOME}} monta o pedido da imagem a partir da seção de **identidade visual** do
+seu `marca.md`. Saiu fora do padrão? Em geral é uma destas:
+
+- **O `marca.md` está incompleto** nessa seção — faltam as cores, a estética ou
+  a lista do que nunca usar. Peça: *"vamos melhorar a parte visual da minha
+  marca"*.
+- **Ele esqueceu de carregar a seção** no pedido. Diga simplesmente: *"refaz
+  essa arte carregando minha identidade visual"*.
+
+E lembre: **cada imagem gerada é paga**. Se estiver testando bastante, vale
+acompanhar o consumo no painel.
+
 ## Nada disso resolveu
 
 Peça um diagnóstico ao próprio {{NOME}} — pelo Telegram ou digitando na janela

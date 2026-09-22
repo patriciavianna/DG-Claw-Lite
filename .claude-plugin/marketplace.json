@@ -11,7 +11,7 @@
       "name": "dgclaw-lite",
       "source": "./",
       "category": "productivity",
-      "description": "Agente pessoal no Telegram 100% nativo — sem Bun, sem hooks, sem launcher, sem painel: so o que o Claude Code ja faz de fabrica. O wizard /dgclaw-lite:setup da nome, personalidade e memoria ao agente e ensina a cerimonia de religar. Ideal pra aprender como funciona por dentro e pra aulas ao vivo.",
+      "description": "Agente pessoal no Telegram 100% nativo — sem Bun, sem hooks, sem launcher, sem painel: so o que o Claude Code ja faz de fabrica. O wizard /dgclaw-lite:setup da nome, personalidade e memoria ao agente e ensina a cerimonia de religar. Extras opcionais: transcricao de audio, connectors do Google e Instagram — 9 skills abertas de conteudo carregadas com a marca do dono, publicacao e geracao de arte, sem publicar nada sem aprovacao. Ideal pra aprender como funciona por dentro e pra aulas ao vivo.",
       "homepage": "https://github.com/DGatoM/DG-Claw-Lite"
     }
   ]
