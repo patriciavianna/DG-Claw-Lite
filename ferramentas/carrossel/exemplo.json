@@ -1,0 +1,52 @@
+{
+  "_comentario": "Modelo de carrossel. Copie, troque os textos e rode: node gerar.js <este arquivo>. Os caminhos de logo e foto sao relativos a ESTE arquivo.",
+
+  "marca": {
+    "preto": "#0C0C0C",
+    "destaque": "#F5C518",
+    "cinza": "#8E8E8E",
+    "assinatura": "@seuperfil",
+    "logo": "logo.png",
+    "foto": "foto.png"
+  },
+
+  "cards": [
+    {
+      "tipo": "capa",
+      "topo": "Pilar · Pilar · Pilar",
+      "titulo": ["PRIMEIRA LINHA", "SEGUNDA LINHA", "TERCEIRA LINHA"],
+      "destacarUltimaLinha": true,
+      "rodape": ["A promessa em uma linha.", "O gancho que faz arrastar."]
+    },
+
+    {
+      "tipo": "mito",
+      "topo": "Mito 1 de 3",
+      "mito": "A crença que seu público repete.",
+      "verdade": "O que é verdade no lugar dela.",
+      "numero": "01"
+    },
+    {
+      "tipo": "mito",
+      "topo": "Mito 2 de 3",
+      "mito": "Outra crença comum.",
+      "verdade": "A correção, em frase curta e afirmativa.",
+      "numero": "02"
+    },
+    {
+      "tipo": "mito",
+      "topo": "Mito 3 de 3",
+      "mito": "A terceira crença.",
+      "verdade": "A virada final, que prepara o fechamento.",
+      "numero": "03"
+    },
+
+    {
+      "tipo": "fecho",
+      "topo": "Seu Nome · O que você faz",
+      "titulo": ["PRIMEIRA METADE", "DO CONTRASTE."],
+      "titulo2": ["SEGUNDA METADE,", "EM DESTAQUE."],
+      "rodape": ["O pedido: salve, compartilhe", "ou mande pra quem precisa ver."]
+    }
+  ]
+}
