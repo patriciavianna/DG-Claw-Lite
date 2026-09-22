@@ -60,7 +60,13 @@ mais visível que um card pode ter.
 | Modo | Quando usar | O que faz |
 |---|---|---|
 | `recorte` (padrão) | foto com **fundo escuro**, ou PNG já recortado | esfuma as bordas e dissolve o resto do fundo no preto do card |
-| `sangria` | foto com **fundo claro** (estúdio cinza, ambiente, evento) | não tenta recortar: a foto vai até a borda do card e leva escurecimento, virando um degradê proposital |
+| `sangria` | a pessoa deve dominar um dos lados do card | a foto ocupa uma faixa de altura inteira e sangra até a borda, com degradê só do lado do texto |
+| `bloco` | sobrou espaço vazio num canto | a foto entra como bloco no canto inferior direito, dissolvendo nos dois lados que encostam no texto |
+
+O `bloco` sai **dessaturado por padrão** (`cinza: 0.88`). Fotos vindas de lugares
+diferentes — evento, estúdio, casa — brigam entre si quando coloridas, e brigam
+com a cor de destaque. Em preto e branco elas viram um conjunto. Para manter a
+cor: `"cinza": 0`.
 
 > **Por que não recortar fundo claro automaticamente.** Cabelo e pele na sombra
 > ficam a uma distância pequena do cinza de estúdio — numa foto real testada
@@ -106,7 +112,7 @@ fechar com uma foto de chamada pra ação:
 |---|---|
 | `topo` | a linha fina de cima (pilares, categoria) |
 | `titulo` | array de linhas, uma por quebra |
-| `destacarUltimaLinha` | última linha na cor de destaque (padrão: sim) |
+| `destacarUltimaLinha` | `true` = última linha na cor de destaque · `"caixa"` = fundo sólido na cor de destaque, o realce mais forte · `false` = sem destaque |
 | `rodape` | `[linha normal, linha em destaque]` |
 | `foto` | `false` remove a foto deste card |
 | `logo` | `false` remove o logo do topo |
@@ -119,7 +125,7 @@ fechar com uma foto de chamada pra ação:
 | `mito` | a crença, entre aspas, em cinza |
 | `verdade` | a correção, em branco e negrito |
 | `rotuloA` / `rotuloB` | trocam "MITO" e "VERDADE" por outros rótulos |
-| `numero` | o número discreto no canto |
+| `numero` | vira um número **gigante de fundo**, que preenche o vazio do topo sem competir com o texto |
 
 **`fecho`** — o último card, o que é salvo e compartilhado.
 

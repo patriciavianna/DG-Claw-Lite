@@ -157,7 +157,13 @@ h1{font-family:${f.titulo};text-transform:uppercase;line-height:${LH_TITULO};
   letter-spacing:-.005em}                      /* armadilha 1 */
 .am{color:${m.destaque}}
 .label{font-size:22px;letter-spacing:.32em;margin-bottom:24px}
-.logo{display:block;width:auto;opacity:.92}
+.logo{display:block;width:auto;opacity:1}
+/* numero gigante atras do conteudo: preenche o vazio sem competir com o texto */
+.fantasma{position:absolute;right:-26px;top:34px;font-size:400px;line-height:.82;
+  color:#1C1C1C;letter-spacing:-.05em;z-index:0;font-family:${f.titulo}}
+/* caixa de destaque: o realce mais forte da marca, igual a peca de referencia */
+.caixa{display:inline-block;background:${m.destaque};color:${m.preto};
+  padding:2px 18px 10px;line-height:${LH_TITULO}}
 /* .col so existe quando ha foto: a coluna de texto estreita pra nao invadir a
    area da pessoa. Por isso o texto de apoio encolhe junto — senao ele quebra
    em linhas orfas ("...ainda / acha / que..."). */
@@ -182,6 +188,23 @@ function blocoFoto(m, cfg, arquivo) {
   if (!foto) return '';
   const modo = cfg.modo || 'recorte';
 
+  if (modo === 'bloco') {
+    // Bloco de foto num canto do card: preenche o vazio que sobra embaixo sem
+    // roubar a leitura do texto. Sangra pras bordas mais proximas, entao nao
+    // cria moldura; o degrade dissolve os dois lados que encostam no conteudo.
+    const larg = cfg.largura || 520, alt = cfg.altura || 460;
+    return `<div class="bg">
+      <img src="${dataURI(foto)}" style="right:0;bottom:0;width:${larg}px;height:${alt}px;
+        object-fit:cover;object-position:${cfg.foco || 'center'};
+        filter:brightness(${cfg.brilho || .9}) contrast(1.08)
+          grayscale(${cfg.cinza === undefined ? .88 : cfg.cinza})
+        ;-webkit-mask-image:linear-gradient(90deg,transparent 0%,#000 46%),linear-gradient(0deg,#000 40%,transparent 96%)
+        ;-webkit-mask-composite:source-in
+        ;mask-image:linear-gradient(90deg,transparent 0%,#000 46%),linear-gradient(0deg,#000 40%,transparent 96%)
+        ;mask-composite:intersect">
+    </div>`;
+  }
+
   if (modo === 'sangria') {
     const larg = cfg.largura || 640;
     // Aqui largura E altura sao definidas de proposito — a excecao da armadilha
@@ -193,8 +216,9 @@ function blocoFoto(m, cfg, arquivo) {
       <img src="${dataURI(foto)}" style="right:0;top:0;height:100%;width:${larg}px;
         object-fit:cover;object-position:${cfg.foco || 'center'};
         filter:brightness(${cfg.brilho || .58}) contrast(1.2) saturate(.92)">
-      <div class="veu" style="background:linear-gradient(90deg,${m.preto} ${cfg.corte || 42}%,
-        rgba(0,0,0,.72) ${(cfg.corte || 42) + 14}%,rgba(0,0,0,.35) 100%)"></div>
+      <div class="veu" style="background:linear-gradient(90deg,${m.preto} ${(cfg.corte || 42) - 10}%,
+        rgba(0,0,0,.90) ${cfg.corte || 42}%,rgba(0,0,0,.45) ${(cfg.corte || 42) + 22}%,
+        rgba(0,0,0,.18) 100%)"></div>
     </div>`;
   }
 
@@ -232,9 +256,14 @@ const moldura = (topo, meio, rodapeEsq, rodapeDir, fundo, topoDir) => `<div clas
   </div>
 </div>`;
 
-const linhas = (arr, destacarUltima) => arr.map((l, i) =>
-  (destacarUltima && i === arr.length - 1) ? `<span class="am">${txt(l)}</span>` : txt(l)
-).join('<br>');
+// destacarUltima: 'caixa' pinta o fundo (o realce mais forte, como na peca de
+// referencia da marca); true so troca a cor da letra.
+const linhas = (arr, destacarUltima) => arr.map((l, i) => {
+  if (!destacarUltima || i !== arr.length - 1) return txt(l);
+  return destacarUltima === 'caixa'
+    ? `<span class="caixa">${txt(l)}</span>`
+    : `<span class="am">${txt(l)}</span>`;
+}).join('<br>');
 
 function cardCapa(c, m) {
   const foto = c._foto || m.foto;
@@ -242,15 +271,14 @@ function cardCapa(c, m) {
   return moldura(c.topo,
     `<div class="${temFoto ? 'col' : ''}">
        <h1 style="font-size:${c.corpoTitulo || (temFoto ? 70 : 88)}px">
-         ${linhas(c.titulo, c.destacarUltimaLinha !== false)}</h1>
+         ${linhas(c.titulo, c.destacarUltimaLinha === undefined ? true : c.destacarUltimaLinha)}</h1>
        ${c.rodape ? `<div style="margin-top:56px"><hr class="thin">
          <div class="kicker">${txt(c.rodape[0])}${c.rodape[1] ?
            `<br><span class="am" style="font-weight:700">${txt(c.rodape[1])}</span>` : ''}</div>
        </div>` : ''}
      </div>`,
-    `<span>${txt(m.assinatura || '')}</span>`, '',
-    temFoto ? blocoFoto(m, c.fotoCfg || {}, foto) : '',
-    c.logo === false ? '' : blocoLogo(m, 82));
+    blocoLogo(m, 104) || `<span>${txt(m.assinatura || '')}</span>`, '',
+    temFoto ? blocoFoto(m, c.fotoCfg || {}, foto) : '', '');
 }
 
 function cardMito(c, m) {
@@ -259,14 +287,16 @@ function cardMito(c, m) {
   return moldura(c.topo,
     `<div>
        <div class="label" style="color:${m.cinza}">${txt(c.rotuloA || 'MITO')}</div>
-       <h1 style="font-size:${c.corpoMito || 58}px;color:#6B6B6B">“${txt(c.mito)}”</h1>
+       <h1 class="am" style="font-size:${c.corpoMito || 62}px">“${txt(c.mito)}”</h1>
      </div>
-     <hr class="thin" style="margin:64px 0">
+     <hr class="thin" style="margin:58px 0">
      <div>
-       <div class="label am" style="font-weight:700">${txt(c.rotuloB || 'VERDADE')}</div>
+       <div class="label" style="color:${m.cinza}">${txt(c.rotuloB || 'VERDADE')}</div>
        <div style="font-size:${fs_}px;line-height:1.36;font-weight:700">${txt(c.verdade)}</div>
      </div>`,
-    `<span>${txt(m.assinatura || '')}</span>`, c.numero || '');
+    blocoLogo(m, 96) || `<span>${txt(m.assinatura || '')}</span>`, '',
+    (c.numero ? `<div class="bg"><div class="fantasma">${txt(c.numero)}</div></div>` : '') +
+    ((c._foto || c.fotoArquivo) ? blocoFoto(m, c.fotoCfg || { modo: 'bloco' }, c._foto) : ''));
 }
 
 function cardFecho(c, m) {
@@ -282,7 +312,7 @@ function cardFecho(c, m) {
           <div class="kicker">${txt(c.rodape.join('<br>'))}</div></div>` : ''}
      </div>`,
     // no fecho o logo assina o rodape; sem logo, volta pra assinatura em texto
-    m.logo ? blocoLogo(m, 70) : `<span>${txt(m.assinatura || '')}</span>`, '',
+    blocoLogo(m, 104) || `<span>${txt(m.assinatura || '')}</span>`, '',
     temFoto ? blocoFoto(m, c.fotoCfg || { altura: 1180, direita: -130 }, foto) : '',
     '');
 }
