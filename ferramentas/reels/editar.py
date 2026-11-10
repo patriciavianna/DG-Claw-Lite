@@ -21,6 +21,7 @@ transcricao local (faster-whisper).
 """
 import argparse
 import difflib
+import hashlib
 import json
 import os
 import re
@@ -106,6 +107,10 @@ def sondar(ffprobe, caminho):
 # ---------------------------------------------------------------------- ordem
 
 def chave_natural(nome):
+    # WhatsApp: "xxxx-VID-20261110-WA0016.mp4" -> ordena pela data + numero
+    m = re.search(r"(\d{8})-WA(\d+)", nome)
+    if m:
+        return [m.group(1), int(m.group(2))]
     return [int(t) if t.isdigit() else t.lower() for t in re.split(r"(\d+)", nome)]
 
 
@@ -145,14 +150,50 @@ def filtro_video(info, enquadrar):
             f"[fundo][frente]overlay=(W-w)/2:(H-h)/2,setsar=1,format=yuv420p[v]")
 
 
-def normalizar(ffmpeg, clipe, saida, enquadrar):
+def medir_volume(ffmpeg, arquivo):
+    """Volume medio da fala (LUFS) do pedaco, ou None se nao der pra medir."""
+    r = subprocess.run([ffmpeg, "-v", "info", "-i", arquivo, "-vn", "-af",
+                        "highpass=f=80,loudnorm=print_format=json", "-f", "null", "-"],
+                       stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+                       encoding="utf-8", errors="replace")
+    m = re.search(r'"input_i"\s*:\s*"(-?[\d.]+|-inf)"', r.stderr)
+    if not m or m.group(1) == "-inf":
+        return None
+    return float(m.group(1))
+
+
+def filtro_audio_pedaco(ffmpeg, clipe, voz):
+    """Limpa o ruido e iguala o volume de CADA pedaco antes de juntar.
+
+    Celular, lapela, outro lugar da sala: cada pedaco chega num volume. Sem
+    igualar, o pedaco baixinho inteiro parece "silencio" e some no corte.
+    Ganho fixo (nao dinamico), pra nao inflar o chiado nas pausas.
+    """
+    cadeia = []
+    if voz != "nenhum":
+        nr = {"leve": 12, "medio": 20, "forte": 30}[voz]
+        cadeia += ["highpass=f=80", f"afftdn=nr={nr}:nf=-45:tn=1"]
+    lufs = medir_volume(ffmpeg, clipe["arquivo"])
+    if lufs is not None:
+        ganho = max(-20.0, min(30.0, -20.0 - lufs))
+        clipe["ganho_db"] = round(ganho, 1)
+        cadeia.append(f"volume={ganho:.2f}dB,alimiter=limit=0.95:level=disabled")
+    return ",".join(cadeia) or "anull"
+
+
+def normalizar(ffmpeg, clipe, saida, enquadrar, voz):
     info = clipe["info"]
     cmd = [ffmpeg, "-y", "-v", "error", "-i", clipe["arquivo"]]
     if not info["tem_audio"]:
         cmd += ["-f", "lavfi", "-t", str(info["duracao"]),
                 "-i", "anullsrc=channel_layout=stereo:sample_rate=48000"]
-    cmd += ["-filter_complex", filtro_video(info, enquadrar),
-            "-map", "[v]", "-map", "0:a:0" if info["tem_audio"] else "1:a:0",
+        grafo = filtro_video(info, enquadrar)
+        mapa_a = "1:a:0"
+    else:
+        grafo = (filtro_video(info, enquadrar) + ";[0:a:0]"
+                 + filtro_audio_pedaco(ffmpeg, clipe, voz) + "[a]")
+        mapa_a = "[a]"
+    cmd += ["-filter_complex", grafo, "-map", "[v]", "-map", mapa_a,
             "-c:v", "libx264", "-preset", "veryfast", "-crf", "14",
             "-c:a", "pcm_s16le", "-ar", "48000", "-ac", "2", "-shortest", saida]
     rodar(cmd)
@@ -414,12 +455,10 @@ def tirar_silencios_de_dentro(trechos, silencios, folga, minimo):
 # ------------------------------------------------------ etapa 4: render final
 
 def cadeia_voz(forca):
+    # ronco e chiado ja sairam pedaco a pedaco (filtro_audio_pedaco)
     if forca == "nenhum":
         return "loudnorm=I=-14:TP=-1.5:LRA=11"
-    nr = {"leve": 12, "medio": 20, "forte": 30}[forca]
     return ",".join([
-        "highpass=f=80",                              # tira ronco/vento grave
-        f"afftdn=nr={nr}:nf=-40:tn=1",                # tira chiado de fundo
         "equalizer=f=250:t=q:w=1.2:g=-2",             # tira o "embolado"
         "equalizer=f=3500:t=q:w=1.0:g=3",             # presenca/clareza da voz
         "deesser=i=0.4",                              # suaviza os "sss"
@@ -563,7 +602,18 @@ def main():
     tmp = tempfile.mkdtemp(prefix="reels-")
     try:
         # 1) ordem
-        clipes = [{"arquivo": f, "info": sondar(ffprobe, f)} for f in coletar_entradas(a.entradas)]
+        clipes, vistos = [], {}
+        for f in coletar_entradas(a.entradas):
+            h = hashlib.md5()
+            with open(f, "rb") as fh:
+                for bloco in iter(lambda: fh.read(1 << 20), b""):
+                    h.update(bloco)
+            if h.hexdigest() in vistos:
+                log(f"     (ignorei {os.path.basename(f)}: e copia identica de "
+                    f"{os.path.basename(vistos[h.hexdigest()])})")
+                continue
+            vistos[h.hexdigest()] = f
+            clipes.append({"arquivo": f, "info": sondar(ffprobe, f)})
         clipes = ordenar(clipes, a.ordem)
         log(f"1/5  Ordem dos {len(clipes)} pedacos:")
         for i, c in enumerate(clipes, 1):
@@ -574,7 +624,7 @@ def main():
         partes = []
         for i, c in enumerate(clipes):
             p = os.path.join(tmp, f"parte{i:03d}.mov")
-            normalizar(ffmpeg, c, p, a.enquadrar)
+            normalizar(ffmpeg, c, p, a.enquadrar, a.voz)
             partes.append(p)
         bruto = os.path.join(tmp, "bruto.mov")
         juntar(ffmpeg, partes, bruto, tmp)
