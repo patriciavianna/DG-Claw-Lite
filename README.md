@@ -65,6 +65,17 @@ publicar"**. "Gostei" não conta.
 > sob licença MIT, instaladas do repositório dele. O DG Claw Lite não copia nem
 > redistribui esse código — ele faz a ponte e traz a camada de marca.
 
+## Editor de Reels — de pedacinhos a um vídeo pronto
+
+Mande vários pedacinhos de vídeo (pelo Telegram ou numa pasta) e peça *"junta
+e edita pro Instagram"* — ou rode `/dgclaw-lite:reels`. Ele **junta na ordem
+certa**, deixa em **9:16**, melhora **imagem e voz**, corta **cacoetes** ("ãh",
+"hum", "é…"), **gaguejos**, **falas repetidas** (fica a última tentativa) e
+**silêncios**, com zoom leve nos cortes e legenda opcional. Precisa do
+**ffmpeg** (único programa extra) e da transcrição de áudio ligada pra cortar
+cacoetes e repetidas — sem ela, corta só os silêncios. Detalhes em
+`ferramentas/reels/README.md`.
+
 ## A cerimônia de religar
 
 Toda vez que quiser acordar seu agente, abra o **Prompt de Comando** (tecla
