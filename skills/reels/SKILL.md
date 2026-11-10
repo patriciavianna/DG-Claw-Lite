@@ -37,8 +37,10 @@ De dentro da pasta do agente (assim ele acha o `audio.json`):
 python "${CLAUDE_PLUGIN_ROOT}/ferramentas/reels/editar.py" reels/<...>/brutos -o reels/<...>/reel.mp4 --ordem nome
 ```
 
-Acrescente o que ela pediu: `--legendas`, `--voz forte` (áudio muito
-ruidoso), `--enquadrar cortar`, `--cacoetes "tipo,né"`. Na dúvida, use o padrão.
+**Sem legenda**: o padrão é não colocar legenda, e assim fica — só use
+`--legendas` se ela pedir legenda com todas as letras naquele vídeo.
+Acrescente o que ela pediu: `--voz forte` (áudio muito ruidoso),
+`--enquadrar cortar`, `--cacoetes "tipo,né"`. Na dúvida, use o padrão.
 
 ## 4. Entregar
 

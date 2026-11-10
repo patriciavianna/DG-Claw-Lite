@@ -17,7 +17,7 @@ Instagram**:
 7. **Melhora a voz** — tira ronco e chiado, deixa a voz mais clara, iguala o
    volume e entrega no padrão do Instagram (-14 LUFS).
 8. **Efeitos mínimos** — zoom leve alternado nos cortes (disfarça o "pulo"),
-   entrada e saída suaves e, se quiser, **legenda** queimada no vídeo.
+   entrada e saída suaves. **Sem legenda** por padrão (dá pra ligar com `--legendas`).
 
 ## Como usar
 
